@@ -2,7 +2,6 @@ package io.github.nexalloy.revanced.facebook.download
 
 import android.net.Uri
 import android.os.Build
-import app.morphe.extension.shared.Logger
 import de.robv.android.xposed.XposedBridge
 import io.github.nexalloy.PatchExecutor
 import io.github.nexalloy.callStaticMethod
@@ -12,7 +11,7 @@ import java.lang.reflect.Member
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal fun deoptimize(member: Member) {
-    runCatching { XposedBridge::class.java.callStaticMethod("deoptimizeMethod", member) }
+    XposedBridge::class.java.callStaticMethod("deoptimizeMethod", member)
 }
 
 internal fun Field.accessible() = apply { isAccessible = true }
@@ -76,15 +75,13 @@ private val cdnResizerSet = AtomicBoolean()
 
 internal fun PatchExecutor.useCdnResize() {
     if (cdnResizerSet.get()) return
-    runCatching {
-        val modifier = ::cdnModifierFieldFingerprint.field.accessible()
-        val resize = ::cdnResizeMethodFingerprint.method.apply { isAccessible = true }
-        val options = ::cdnOptionsConstructorFingerprint.constructor.apply { isAccessible = true }
-        val scale = ::cdnScaleFieldFingerprint.field.accessible()
-        val tier = ::cdnTierFieldFingerprint.field.accessible()
-        PhotoSize.resizer = { address, width, height ->
-            modifier.get(null)?.let { resize.invoke(it, address, options.newInstance(scale.get(null), tier.get(null), width, height)) as? Uri }
-        }
-        cdnResizerSet.set(true)
-    }.onFailure { Logger.printInfo { "Facebook: photo address modifier not found, saving the largest copy the model holds: ${it.message}" } }
+    val modifier = ::cdnModifierFieldFingerprint.field.accessible()
+    val resize = ::cdnResizeMethodFingerprint.method.apply { isAccessible = true }
+    val options = ::cdnOptionsConstructorFingerprint.constructor.apply { isAccessible = true }
+    val scale = ::cdnScaleFieldFingerprint.field.accessible()
+    val tier = ::cdnTierFieldFingerprint.field.accessible()
+    PhotoSize.resizer = { address, width, height ->
+        modifier.get(null)?.let { resize.invoke(it, address, options.newInstance(scale.get(null), tier.get(null), width, height)) as? Uri }
+    }
+    cdnResizerSet.set(true)
 }
