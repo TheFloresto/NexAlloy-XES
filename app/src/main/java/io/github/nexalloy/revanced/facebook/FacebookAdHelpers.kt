@@ -2983,3 +2983,56 @@ private fun readableMapWithString(original: Any?, body: String): Any? {
         instance
     }.getOrNull()
 }
+
+fun hookVoidMethodsNoOp(clazz: Class<*>): Int = clazz.declaredMethods.count { m ->
+    val target = m.returnType == Void.TYPE && !Modifier.isAbstract(m.modifiers) && !Modifier.isNative(m.modifiers)
+    if (target) m.hookMethod { before { it.result = null } }
+    target
+}
+
+fun hookStoryAdBucketPassThrough(method: Method) {
+    val list = method.parameterTypes.indexOfLast { it.name == "com.google.common.collect.ImmutableList" }
+    if (list < 0) return
+    method.hookMethod { before { param -> param.result = param.args[list] } }
+}
+
+private val GAME_AD_NO_AD_CODES = mapOf(
+    "getinterstitialadasync" to "CLIENT_UNSUPPORTED_OPERATION",
+    "getrewardedvideoasync" to "CLIENT_UNSUPPORTED_OPERATION",
+    "loadadasync" to "ADS_NO_FILL",
+    "loadbanneradasync" to "ADS_NO_FILL",
+    "showadasync" to "ADS_NOT_LOADED",
+)
+private const val GAME_AD_WATCHED_PREFIX = "nexalloy-watched-"
+private val gameAdWatchedCount = AtomicInteger(0)
+
+fun hookGameAdBridgeMessages(postMessage: Method, reject: Method, resolve: Method) {
+    reject.isAccessible = true
+    resolve.isAccessible = true
+    postMessage.hookMethod {
+        before { param ->
+            runCatching {
+                val raw = param.args[0] as? String ?: return@runCatching
+                if (GAME_AD_NO_AD_CODES.keys.none { raw.contains(it) }) return@runCatching
+                val message = JSONObject(raw)
+                val type = message.optString("type")
+                val code = GAME_AD_NO_AD_CODES[type] ?: return@runCatching
+                val content = message.optJSONObject("content") ?: return@runCatching
+                val promise = content.optString("promiseID")
+                if (promise.isEmpty()) return@runCatching
+
+                val watched = when (type) {
+                    "getrewardedvideoasync" -> JSONObject()
+                        .put("placementID", content.optString("placementID"))
+                        .put("adInstanceID", GAME_AD_WATCHED_PREFIX + gameAdWatchedCount.incrementAndGet())
+                    "loadadasync", "showadasync" ->
+                        if (content.optString("adInstanceID").startsWith(GAME_AD_WATCHED_PREFIX)) JSONObject() else null
+                    else -> null
+                }
+                if (watched != null) resolve.invoke(param.thisObject, promise, watched)
+                else reject.invoke(param.thisObject, promise, "No ad is available.", code)
+                param.result = null
+            }
+        }
+    }
+}
