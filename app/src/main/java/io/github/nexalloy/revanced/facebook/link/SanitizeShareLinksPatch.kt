@@ -4,7 +4,6 @@ import android.app.Instrumentation
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
-import app.morphe.extension.shared.Logger
 import io.github.nexalloy.hookMethod
 import io.github.nexalloy.patch
 
@@ -13,10 +12,8 @@ val SanitizeShareLinks = patch(
     description = "Removes Facebook's tracking tags from links you share or copy.",
 ) {
     val builders = buildList {
-        runCatching {
-            add(::externalShareTrackerFingerprint.dexMethod)
-            addAll(::externalShareTrackerSiblingsFingerprint.dexMethodList)
-        }.onFailure { Logger.printInfo { "Facebook: ExternalShareTracker not found: ${it.message}" } }
+        add(::externalShareTrackerFingerprint.dexMethod)
+        addAll(::externalShareTrackerSiblingsFingerprint.dexMethodList)
         addAll(::shareLinkAppendersFingerprint.dexMethodList)
     }
     builders.forEach { dm ->
