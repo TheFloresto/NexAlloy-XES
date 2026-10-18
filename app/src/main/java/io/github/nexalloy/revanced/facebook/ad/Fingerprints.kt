@@ -851,3 +851,73 @@ val marketplaceSendRequestFingerprint = findMethodListDirect {
         }
     }.distinctBy { it.descriptor }
 }
+
+private val GAME_AD_MESSAGE_ANCHORS = listOf(
+    "getinterstitialadasync",
+    "getrewardedvideoasync",
+    "loadadasync",
+    "loadbanneradasync",
+    "showadasync",
+)
+
+private const val GAME_AD_REJECT_LOG =
+    "Unexpected exception while constructing JSONObject to be dispatched to Javascript: rejectPromise"
+private const val GAME_AD_RESOLVE_LOG =
+    "Unexpected exception while constructing JSONObject to be dispatched toJavascript: resolvePromise"
+
+val gameBridgePostMessageFingerprint = findMethodDirect {
+    findMethod {
+        matcher {
+            name = "postMessage"
+            returnType = "void"
+            paramTypes("java.lang.String", "java.lang.String")
+            usingEqStrings(GAME_AD_MESSAGE_ANCHORS)
+        }
+    }.single { !Modifier.isStatic(it.modifiers) }
+}
+
+private fun DexKitBridge.gameBridgeCaller(log: String, params: List<String>): MethodData {
+    val builders = findMethod {
+        matcher { usingEqStrings(log); returnType = "void"; paramTypes(params) }
+    }.map { it.descriptor }.toSet()
+    return getClassData(gameBridgePostMessageFingerprint().className)!!.methods.single { m ->
+        m.isMethod && !Modifier.isStatic(m.modifiers) && m.returnTypeName == "void" &&
+            m.paramTypeNames == params && m.invokes.any { it.descriptor in builders }
+    }
+}
+
+val gameBridgeRejectFingerprint = findMethodDirect {
+    gameBridgeCaller(GAME_AD_REJECT_LOG, listOf("java.lang.String", "java.lang.String", "java.lang.String"))
+}
+
+val gameBridgeResolveFingerprint = findMethodDirect {
+    gameBridgeCaller(GAME_AD_RESOLVE_LOG, listOf("java.lang.String", "java.lang.Object"))
+}
+
+private val STORY_AD_BUCKET_ANCHORS = listOf(
+    "handling_inorganic_clash",
+    "uninsertedMainAdsQueue",
+    "AdPaginatingBucketStaticInsertionDataSource.getBuckets",
+    "StoryViewerMidCardDataSource.getBuckets",
+)
+
+val storyAdBucketSourcesFingerprint = findMethodListDirect {
+    STORY_AD_BUCKET_ANCHORS.mapNotNull { anchor ->
+        findMethod {
+            matcher { usingEqStrings(anchor); returnType = "com.google.common.collect.ImmutableList" }
+        }.singleOrNull { it.isMethod && "com.google.common.collect.ImmutableList" in it.paramTypeNames }
+    }
+}
+
+private val AD_ID_SENDER_ANCHORS = listOf(
+    "ReportAdvertiserIDMutation",
+    "fb4a_launch_custom_data",
+    "https://www.facebook.com/privacy_sandbox/mobile/register/source?tracking_data=",
+    "app_new_install",
+)
+
+val adIdSendersFingerprint = findMethodListDirect {
+    AD_ID_SENDER_ANCHORS.mapNotNull { anchor ->
+        findMethod { matcher { usingEqStrings(anchor); returnType = "void" } }.singleOrNull { it.isMethod }
+    }
+}

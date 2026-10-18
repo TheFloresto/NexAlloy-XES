@@ -56,6 +56,8 @@ import io.github.nexalloy.revanced.facebook.hookReceiverSponsoredNull
 import io.github.nexalloy.revanced.facebook.hookNewsfeedSponsoredFilter
 import io.github.nexalloy.revanced.facebook.installFeedComponentGuard
 import io.github.nexalloy.revanced.facebook.hookMarketplaceSendRequest
+import io.github.nexalloy.revanced.facebook.hookGameAdBridgeMessages
+import io.github.nexalloy.revanced.facebook.hookStoryAdBucketPassThrough
 import java.lang.reflect.Method
 
 val HideFacebookAds = patch(
@@ -127,6 +129,11 @@ val HideFacebookAds = patch(
 
     ::sponsoredStoryVendorMethodsFingerprint.dexMethodList.forEach { dm -> hookNullAdResult(dm.toMethod()) }
 
+    // Story ads: 4 nguồn ad bucket (theo Hushfacebook) trả lại danh sách gốc.
+    // Hook cũ vẫn chặn tải thêm/chèn; hook trả danh sách gốc của nó trùng với nguồn trên nên bỏ khi đã có.
+    val storyAdBucketSources = ::storyAdBucketSourcesFingerprint.dexMethodList.map { it.toMethod() }
+    storyAdBucketSources.forEach { hookStoryAdBucketPassThrough(it) }
+
     val insertionTrigger = ::storyAdsInsertionTriggerMethodFingerprint.method
     // Dự phòng có chủ đích: không có method nào thì dùng class fingerprint (cái này mà thiếu thì ném lỗi).
     val providerClasses = ::storyAdsInDiscMethodsFingerprint.dexMethodList
@@ -134,26 +141,36 @@ val HideFacebookAds = patch(
         .distinct()
         .ifEmpty { listOf(::storyAdsInDiscClassFingerprint.clazz) }
     providerClasses.forEachIndexed { index, providerClass ->
-        hookStoryAdProvider(resolveStoryAdProviderHooks(providerClass, index == 0, insertionTrigger))
+        val hooks = resolveStoryAdProviderHooks(providerClass, index == 0, insertionTrigger)
+        hookStoryAdProvider(if (storyAdBucketSources.isEmpty()) hooks else hooks.copy(mergeMethod = null))
     }
 
-    val gameAdMethods = ::gameAdRequestMethodsFingerprint.dexMethodList.map { it.toMethod() }
-    gameAdMethods.forEach { m -> hookGameAdRequest(m) }
+    // Game ads: chặn ở postMessage của game bridge (theo Hushfacebook).
+    // Không tìm thấy bridge thì dùng các hook xử lý tin nhắn cũ; hai cách không chạy cùng lúc vì hook cũ đổi reject thành success.
+    val gameBridge = runCatching {
+        Triple(::gameBridgePostMessageFingerprint.method, ::gameBridgeRejectFingerprint.method, ::gameBridgeResolveFingerprint.method)
+    }.getOrNull()
+    if (gameBridge != null) {
+        hookGameAdBridgeMessages(gameBridge.first, gameBridge.second, gameBridge.third)
+    } else {
+        val gameAdMethods = ::gameAdRequestMethodsFingerprint.dexMethodList.map { it.toMethod() }
+        gameAdMethods.forEach { m -> hookGameAdRequest(m) }
 
-    gameAdMethods.firstOrNull()?.let { firstMethod ->
-        firstMethod.declaringClass.declaredMethods
-            .firstOrNull { m -> m.name == "postMessage" && m.parameterCount == 2 && m.parameterTypes.all { it == String::class.java } }
-            ?.apply { isAccessible = true }
-            ?.let { hookGameAdBridge(it) }
+        gameAdMethods.firstOrNull()?.let { firstMethod ->
+            firstMethod.declaringClass.declaredMethods
+                .firstOrNull { m -> m.name == "postMessage" && m.parameterCount == 2 && m.parameterTypes.all { it == String::class.java } }
+                ?.apply { isAccessible = true }
+                ?.let { hookGameAdBridge(it) }
+        }
+
+        gameAdMethods.firstOrNull()?.declaringClass?.let { bridgeClass ->
+            hookGameAdResultMethods(bridgeClass)
+            hookGameAdServiceDispatchMethods(bridgeClass)
+        }
+
+        hookGameAdJavascriptInterfaceWatcher()
+        hookGameAdScriptDeliveries()
     }
-
-    gameAdMethods.firstOrNull()?.declaringClass?.let { bridgeClass ->
-        hookGameAdResultMethods(bridgeClass)
-        hookGameAdServiceDispatchMethods(bridgeClass)
-    }
-
-    hookGameAdJavascriptInterfaceWatcher()
-    hookGameAdScriptDeliveries()
     hookAudienceNetworkRewardFallbacks(classLoader)
     hookInstantGamesAdsLoader(classLoader)
 
