@@ -43,3 +43,31 @@ val storyViewerNonCriticalSetupFingerprint = findMethodListDirect {
         .filter { it.isHookable() }
         .distinctBy { it.descriptor }
 }
+
+val xAnalyticsForegroundUploadFingerprint = findMethodListDirect {
+    val handler = getClassData("com.facebook.xanalytics.provider.NativeXAnalyticsAppJobHandler") ?: return@findMethodListDirect emptyList()
+    val created = handler.methods.flatMap { it.invokes }.filter { it.isConstructor }.map { it.className }.toSet()
+    created.mapNotNull { getClassData(it) }
+        .flatMap { cls -> cls.methods.filter { it.name == "run" && it.paramTypeNames.isEmpty() } }
+        .filter { run -> run.invokes.any { it.className == "com.facebook.xanalytics.XAnalyticsNative" && it.name == "kickOffUpload" } }
+}
+
+val typingRunnableRunsFingerprint = findMethodListDirect {
+    findClass {
+        matcher {
+            fields {
+                add { type = "java.util.concurrent.ScheduledFuture" }
+                add { type = "java.lang.Runnable" }
+            }
+        }
+    }.filter { cls ->
+        cls.fields.count { it.typeName == "java.util.concurrent.ScheduledFuture" } >= 2 &&
+            cls.fields.count { it.typeName == "java.lang.Runnable" } >= 2
+    }.flatMap { context ->
+        context.methods.flatMap { it.invokes }.filter { it.isConstructor }.map { it.className }
+    }.distinct().mapNotNull { getClassData(it) }
+        .filter { cls ->
+            cls.interfaces.any { it.name == "java.lang.Runnable" } && cls.fields.any { it.name == "__redex_internal_original_name" }
+        }
+        .flatMap { cls -> cls.methods.filter { it.name == "run" && it.paramTypeNames.isEmpty() && it.returnTypeName == "void" } }
+}
