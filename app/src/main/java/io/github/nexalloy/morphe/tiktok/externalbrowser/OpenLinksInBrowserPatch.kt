@@ -24,7 +24,7 @@ val OpenLinksInBrowser = patch(
 ) {
     TikTokServices.init(classLoader)
 
-    run { // bioLinks
+    run {
         val thirdContext = SPARK_THIRD_CONTEXT_CLASS.findClassOrNull(classLoader) ?: error("$SPARK_THIRD_CONTEXT_CLASS not found")
         val routers = ::sparkThirdRouterOpenFingerprints.dexMethodList.realMatches()
         check(routers.isNotEmpty()) { "SparkThird router not found" }
@@ -40,7 +40,7 @@ val OpenLinksInBrowser = patch(
         }
     }
 
-    run { // storyLinkStickers
+    run {
         val sticker = INTERACT_STICKER_CLASS.findClassOrNull(classLoader) ?: error("$INTERACT_STICKER_CLASS not found")
         val sheets = ::storyLinkSheetFingerprints.dexMethodList.realMatches()
         check(sheets.isNotEmpty()) { "story link sheet not found" }
