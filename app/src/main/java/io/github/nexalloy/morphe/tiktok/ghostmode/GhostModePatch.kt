@@ -37,13 +37,13 @@ val GhostMode = patch(
     }
     Logger.printDebug { "$TAG reporters=$reporters" }
 
-    run { // reportRequests
+    run {
         val paths = reporters.filterNot { it.suspend }.map { it.path }.toSet()
         check(paths.isNotEmpty()) { "no report path resolved" }
         ReportRequestBlocker.install(classLoader, paths)
     }
 
-    run { // suspendReports
+    run {
         val names = reporters.filter { it.suspend }.map { it.name }.toSet()
         check(names.isNotEmpty()) { "no suspend reporter on this build" }
         val methods = REPORTER_WRAPPERS.mapNotNull { it.findClassOrNull(classLoader) }
@@ -56,7 +56,7 @@ val GhostMode = patch(
         }
     }
 
-    run { // typingStatus
+    run {
         val sender = TYPING_STATUS_SENDER_CLASS.findClassOrNull(classLoader) ?: error("$TYPING_STATUS_SENDER_CLASS not found")
         val methods = sender.declaredMethods.filter {
             !Modifier.isStatic(it.modifiers) && it.returnType == Void.TYPE &&
@@ -66,7 +66,7 @@ val GhostMode = patch(
         methods.forEach { it.hookMethod(XC_MethodReplacement.DO_NOTHING) }
     }
 
-    run { // storyPlayStats
+    run {
         val aweme = AWEME_CLASS.findClassOrNull(classLoader) ?: error("$AWEME_CLASS not found")
         val senders = ::awemeStatsSenderFingerprints.dexMethodList.realMatches()
         check(senders.size == 1) { "expected one play report sender, found ${senders.size}" }
@@ -80,7 +80,7 @@ val GhostMode = patch(
 
     var statsDispatchHooked = false
 
-    run { // followedPlayStats
+    run {
         val aweme = AWEME_CLASS.findClassOrNull(classLoader) ?: error("$AWEME_CLASS not found")
         FollowedViews.init(aweme)
         val senders = ::awemeStatsSenderFingerprints.dexMethodList.realMatches()
@@ -93,7 +93,7 @@ val GhostMode = patch(
         }
     }
 
-    run { // followedStatsDispatch
+    run {
         val byName = AWEME_STATS_API_CLASS.findClassOrNull(classLoader)?.declaredMethods?.filter {
             Modifier.isStatic(it.modifiers) && it.returnType == Void.TYPE && it.parameterCount == 1 &&
                 !List::class.java.isAssignableFrom(it.parameterTypes[0]) &&
@@ -116,7 +116,7 @@ val GhostMode = patch(
         statsDispatchHooked = true
     }
 
-    run { // followedViewRequests
+    run {
         val service = AWEME_STATS_SERVICE_CLASS.findClassOrNull(classLoader)
         fun pathOf(method: String): String? {
             val declared = service?.declaredMethods?.firstOrNull { it.name == method }
@@ -219,7 +219,6 @@ internal object FollowedViews {
         getFollowStatus = getAuthor.returnType.getMethod("getFollowStatus").also {
             check(it.returnType == Int::class.javaPrimitiveType) { "getFollowStatus returns ${it.returnType.name}" }
         }
-        // Không phải bản nào cũng có → dò, không có thì bỏ qua.
         getForwardItem = aweme.methods.firstOrNull { it.name == "getForwardItem" && it.parameterCount == 0 }
             ?.takeIf { aweme.isAssignableFrom(it.returnType) }
     }
