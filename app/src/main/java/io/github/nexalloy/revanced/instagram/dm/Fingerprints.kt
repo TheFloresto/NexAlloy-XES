@@ -118,6 +118,21 @@ private fun DexKitBridge.messageFields(): Map<String, FieldData> = once("message
                 ?.let { found[key] = it }
         }
     }
+    for (key in MESSAGE_FIELD_KEYS) {
+        if (found.containsKey(key)) continue
+        val pools = findMethod {
+            matcher { usingEqStrings(key); paramTypes("int"); returnType = STRING }
+        }.filter { java.lang.reflect.Modifier.isStatic(it.modifiers) }.map { it.descriptor }.toSet()
+        if (pools.isEmpty()) continue
+        val sites = parser.methods.flatMap { method ->
+            val code = runCatching { method.instructions }.getOrNull() ?: return@flatMap emptyList()
+            code.indices.filter { at ->
+                code[at].methodRef?.descriptor in pools && code.drop(at + 1).take(4)
+                    .any { it.methodRef?.let { m -> m.name == "equals" && m.declaredClassName == STRING } == true }
+            }.map { at -> code.drop(at + 1).firstOrNull { it.opcode in INSTANCE_FIELD_WRITES }?.fieldRef }
+        }
+        sites.singleOrNull()?.let { found[key] = it }
+    }
     found
 }
 
@@ -305,13 +320,9 @@ internal val messageTableGetterMethod = findMethodDirect {
     }.single { java.lang.reflect.Modifier.isStatic(it.modifiers) }
 }
 
-// ---- Theo HushGram (Show when someone was last active), kiểm tra trên 451 ----
-
 private const val OP_IGET_WIDE = 0x53
 private const val OP_SGET_WIDE = 0x61
 
-// Hàm tạo chữ presence: (Resources, List)String, nạp 2 hằng số Redex không đổi tên được:
-// 480 phút (đếm giờ tới 8 tiếng) và 10080 phút (quá 1 tuần thì không hiện gì).
 internal val presenceTextMethod = findMethodDirect {
     findMethod {
         matcher {
@@ -322,12 +333,10 @@ internal val presenceTextMethod = findMethodDirect {
     }.single { !it.isStaticMethod() }
 }
 
-// Field thời điểm hoạt động cuối (ms): iget-wide đầu tiên trên item của danh sách.
 internal val presenceLastActiveField = findFieldDirect {
     presenceTextMethod().instructions.first { it.opcode == OP_IGET_WIDE }.fieldRef!!
 }
 
-// Kiểm tra "Đang hoạt động": static (item, long)boolean gọi ngay sau khi đọc thời điểm.
 internal val presenceActiveCheckMethod = findMethodDirect {
     val item = presenceLastActiveField().declaredClassName
     presenceTextMethod().instructions.mapNotNull { it.methodRef }.first {
@@ -335,26 +344,17 @@ internal val presenceActiveCheckMethod = findMethodDirect {
     }
 }
 
-// Khoảng thời gian vẫn tính là "Đang hoạt động": sget-wide đầu tiên trong hàm.
 internal val presenceActiveWindowField = findFieldDirect {
     presenceTextMethod().instructions.first { it.opcode == OP_SGET_WIDE }.fieldRef!!
 }
 
-// ---- Theo HushGram (Download voice messages), kiểm tra trên 451 ----
-
 private const val OP_IGET_BOOLEAN = 0x55
 private const val OP_SGET_OBJECT = 0x62
-private val OP_IF_ZERO = setOf(0x38, 0x39) // if-eqz, if-nez
+private val OP_IF_ZERO = setOf(0x38, 0x39)
 
-// Hàm dựng menu nhấn giữ tin nhắn: mang chuỗi trace này.
 private fun DexKitBridge.messageActionMenu(): MethodData =
     findMethod { matcher { usingEqStrings("DirectThreadFragment.showMessageActionDialog") } }.single()
 
-/**
- * Mỗi hành động của menu là một singleton, được thêm khi một boolean của model menu đúng.
- * Trả từng cặp [boolean của model, field singleton của hành động]; patch gọi toString() của singleton
- * lúc chạy để chọn hành động Lưu ("SaveMedia") — tên này có bản lấy qua pool chuỗi của Redex nên không so ở đây.
- */
 internal val messageMenuActionGuardsFingerprint = findFieldListDirect {
     val menu = messageActionMenu()
     val models = menu.paramTypeNames.toSet()
@@ -371,8 +371,6 @@ internal val messageMenuActionGuardsFingerprint = findFieldListDirect {
     }.distinctBy { (g, a) -> g.descriptor + a.descriptor }.flatMap { (g, a) -> listOf(g, a) }
 }
 
-// Lambda dựng model menu cho một tin nhắn: invoke() tạo model. Redex gộp lambda (field Object + $t)
-// nên tin nhắn được tìm theo giá trị lúc chạy, không theo kiểu field.
 internal val messageMenuModelBuildersFingerprint = findMethodListDirect {
     val model = messageMenuActionGuardsFingerprint().first().declaredClassName
     findMethod {
@@ -384,8 +382,6 @@ internal val messageMenuModelBuildersFingerprint = findMethodListDirect {
     }
 }
 
-// Cửa vào bộ lưu media của chat (DirectThreadMediaSaver): hàm static gọi hàm kiểm tra loại tin nhắn
-// (hàm có chuỗi "Invalid message contentType: "), cùng danh sách tham số.
 internal val directMediaSaverEntryFingerprint = findMethodDirect {
     val check = findMethod { matcher { usingEqStrings("Invalid message contentType: ") } }.single()
     findMethod {
@@ -393,10 +389,8 @@ internal val directMediaSaverEntryFingerprint = findMethodDirect {
     }.single { it.isStaticMethod() }
 }
 
-// Hàm dựng menu nhấn giữ tin nhắn (cho patch tải tin nhắn thoại).
 internal val messageActionMenuFingerprint = findMethodDirect { messageActionMenu() }
 
-// Lời gọi tra tin nhắn ngay sau khi nạp chuỗi trace của menu (trả về tin nhắn đang được giữ).
 internal val messageMenuLookupFingerprint = findMethodDirect {
     val code = messageActionMenu().instructions
     val at = code.indexOfFirst { it.string == "DirectThreadFragment.showMessageActionDialog" }

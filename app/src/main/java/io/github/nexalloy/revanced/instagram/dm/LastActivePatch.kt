@@ -28,7 +28,6 @@ val ShowLastActive = patch(
                 val item = (param.args[1] as? List<*>)?.firstOrNull() ?: return@runCatching
                 val last = lastActive.getLong(item).takeIf { it > 0 } ?: return@runCatching
                 val now = System.currentTimeMillis()
-                // Cùng điều kiện "Đang hoạt động" của Instagram → để nguyên.
                 if (activeCheck.invoke(null, item, now) == true || now - last <= window.getLong(null)) return@runCatching
                 val res = param.args[0] as Resources
                 param.result = exact(res, last) ?: return@runCatching

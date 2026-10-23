@@ -19,40 +19,20 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-// =============================================================================================
-// MEDIA SETTINGS - change these values directly, then rebuild the module.
-// =============================================================================================
 
-/**
- * How long photos / videos / voice of messages that were NOT unsent stay cached, counted from
- * when the message was SENT (also the download window: older messages aren't downloaded).
- * Stored in Instagram's cache folder. Default 48.
- */
 private const val PENDING_MEDIA_HOURS = 48
 
-/**
- * Delete media of UNSENT messages this many days after they were unsent.
- * 0 = never. The message text always stays. Default 0.
- */
 private const val KEPT_MEDIA_MAX_AGE_DAYS = 30
 
-/**
- * Max storage for media of UNSENT messages, in MB (D11). Above it, media of the oldest unsent
- * messages is deleted first. 0 = unlimited. The message text always stays. Default 1024 (1 GB).
- */
 private const val KEPT_MEDIA_MAX_MB = 1024
 
-/** Safety cap for the cache of normal (not unsent) messages, in MB. 0 = unlimited. Default 1024. */
 private const val PENDING_MEDIA_MAX_MB = 1024
 
-/** Cleanup runs at app start, then every N hours or every M downloads. Defaults 3 / 20. */
 private const val PRUNE_EVERY_HOURS = 3
 private const val PRUNE_EVERY_DOWNLOADS = 20
 
-/** Largest single file that will be downloaded, in MB. 0 = no limit. Default 100. */
 private const val MAX_MEDIA_FILE_MB = 100
 
-// =============================================================================================
 
 val SaveDeletedMessages = patch(
     name = "Save deleted messages",
@@ -98,7 +78,7 @@ val SaveDeletedMessages = patch(
     fun keepMedia(target: Any, vararg extraIds: String?) {
         keptMedia.add(message.itemId(target), message.clientContext(target), *extraIds)
         media.onKept(target)
-        shadow.save(target) // F5 backup
+        shadow.save(target)
     }
 
     val findThread = ::threadStateLookupMethod.method.apply { isAccessible = true }
@@ -176,7 +156,7 @@ val SaveDeletedMessages = patch(
             val parsed = param.result ?: return@after
             if (!message.isFromSomeoneElse(parsed)) return@after
             message.unhide(parsed)
-            recent.put(parsed) // C6
+            recent.put(parsed)
             if (keptMedia.contains(message.itemId(parsed), message.clientContext(parsed))) {
                 media.redirectKept(parsed)
             } else {
@@ -224,7 +204,6 @@ val SaveDeletedMessages = patch(
             }
             if (!ownList) return@after
             shadow.restoreInto(cached, key) { restoredMsg ->
-                // Protect it again for the original in-memory hooks (lost on restart).
                 kept.protect(message.itemId(restoredMsg), message.clientContext(restoredMsg))
             }
         }
@@ -385,7 +364,7 @@ private class RecentMessages(private val message: MessageAccess) {
     fun get(id: String): Any? = map[id]
 
     private companion object {
-        const val MAX = 600 // ~300 messages, two keys each
+        const val MAX = 600
     }
 }
 
@@ -455,7 +434,7 @@ private class UnsentMediaCache(
     private val voiceOwners: MutableMap<Any, String> = Collections.synchronizedMap(java.util.WeakHashMap())
 
     @Volatile private var lastPrune = 0L
-    private var downloadsSincePrune = 0 // worker thread only
+    private var downloadsSincePrune = 0
 
     init {
         worker.execute {
@@ -483,14 +462,14 @@ private class UnsentMediaCache(
             from.renameTo(to) || runCatching { from.copyRecursively(to, true); from.deleteRecursively() }.isSuccess
         }
         if (moved) {
-            to.setLastModified(System.currentTimeMillis()) // D10/D11 age = time it was kept
+            to.setLastModified(System.currentTimeMillis())
             Logger.printDebug { "SaveDeletedMessages: media of $id moved to permanent storage" }
         }
     }
 
     fun onKept(msg: Any) {
         val id = message.itemId(msg) ?: return
-        message.voiceObject(msg)?.let { voiceOwners[it] = id } // voice needs this right away
+        message.voiceObject(msg)?.let { voiceOwners[it] = id }
         worker.execute {
             runCatching {
                 promote(id)
@@ -513,7 +492,7 @@ private class UnsentMediaCache(
         if (!scheduled.add(id)) return
 
         worker.execute {
-            if (keptDir(id).isDirectory) return@execute // already kept and stored
+            if (keptDir(id).isDirectory) return@execute
             val dir = pendingDir(id)
             if (voice != null) {
                 runCatching { downloadVoice(id, voice, dir) }
@@ -530,7 +509,6 @@ private class UnsentMediaCache(
             }
             if (dir.isDirectory) dir.setLastModified(sentMs ?: System.currentTimeMillis())
 
-            // Unsent while we were still downloading: keep the files and patch the message.
             if (kept.contains(id)) {
                 promote(id)
                 redirect(msg)
@@ -577,7 +555,6 @@ private class UnsentMediaCache(
         val id = voiceOwners[voice] ?: return null
         if (!kept.contains(id)) return null
         val files = dirOf(id).listFiles().orEmpty().filter { it.length() > 0 }
-        // "video.*" = audio grabbed by the generic media walk of an older build.
         return (files.firstOrNull { it.name.startsWith("voice.") }
             ?: files.firstOrNull { it.name.startsWith("video.") })
             ?.absolutePath
@@ -623,7 +600,6 @@ private class UnsentMediaCache(
         }
         val type = node.javaClass
         if (type.isArray || isPlatform(type.name)) return
-        // User objects are shared app-wide (UserCache); never touch avatars.
         if (type.name.startsWith("com.instagram.user.") || type.simpleName == "User") return
 
         var cls: Class<*>? = type
@@ -652,7 +628,7 @@ private class UnsentMediaCache(
         val host = uri.host ?: return null
         if (!host.endsWith("cdninstagram.com") && !host.contains("fbcdn.net")) return null
         val path = (uri.path ?: return null).lowercase()
-        if (path.contains("t51.2885-19")) return null // profile pictures
+        if (path.contains("t51.2885-19")) return null
         return when {
             path.endsWith(".mp4") || path.endsWith(".m4a") || path.endsWith(".aac") -> Kind.VIDEO
             path.endsWith(".jpg") || path.endsWith(".jpeg") || path.endsWith(".webp") ||
@@ -673,7 +649,7 @@ private class UnsentMediaCache(
 
     private fun imageArea(url: String): Long {
         val stp = runCatching { Uri.parse(url).getQueryParameter("stp") }.getOrNull()
-            ?: return Long.MAX_VALUE // no resize instruction = original size
+            ?: return Long.MAX_VALUE
         val m = sizeHint.find(stp) ?: return Long.MAX_VALUE
         return m.groupValues[1].toLong() * m.groupValues[2].toLong()
     }
@@ -735,7 +711,7 @@ private class UnsentMediaCache(
         val dirs = pendingRoot.listFiles()?.filter { it.isDirectory }.orEmpty()
         for (dir in dirs) {
             when {
-                kept.contains(dir.name) -> promote(dir.name) // kept while we weren't looking
+                kept.contains(dir.name) -> promote(dir.name)
                 now - dir.lastModified() > pendingRetentionMs -> dir.deleteRecursively()
             }
         }
@@ -791,7 +767,6 @@ private class UnsentMediaCache(
         const val DIR_NAME = "nexalloy_unsent_media"
         const val MAX_DEPTH = 8
         const val MAX_NODES = 4000
-        // 0 in the settings = no limit.
         val MAX_FILE_BYTES = if (MAX_MEDIA_FILE_MB <= 0) Long.MAX_VALUE else MAX_MEDIA_FILE_MB.toLong() * 1024 * 1024
         val PENDING_MAX_BYTES = if (PENDING_MEDIA_MAX_MB <= 0) Long.MAX_VALUE else PENDING_MEDIA_MAX_MB.toLong() * 1024 * 1024
         val PRUNE_INTERVAL_MS = TimeUnit.HOURS.toMillis(PRUNE_EVERY_HOURS.toLong())
@@ -913,7 +888,7 @@ private class ShadowStore(
 
     fun save(msg: Any) {
         if (has(message.itemId(msg))) return
-        val writer = toRow ?: return // serializer fingerprint missing: nothing we can do
+        val writer = toRow ?: return
         val t = table
         if (t == null) {
             synchronized(pending) {
@@ -990,7 +965,7 @@ private class ShadowStore(
             }
             if (entries.isEmpty()) {
                 index.remove(thread)
-                File(root, thread).delete() // only succeeds when empty
+                File(root, thread).delete()
             }
         }
     }
