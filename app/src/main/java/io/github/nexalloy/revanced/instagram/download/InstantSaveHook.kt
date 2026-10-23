@@ -10,14 +10,6 @@ import java.lang.reflect.Member
 import java.lang.reflect.Modifier
 import java.lang.reflect.Proxy
 
-/**
- * Long-press a received instant (QuickSnap) to save it.
- *
- * 1. The viewer-screen lambdas receive a model holding the Media on screen; we remember it.
- * 2. The tap/long-press gesture lambda holds `Function1<Boolean, Unit>` callbacks; the
- *    long-press one is invoked with `true` when the hold starts. We wrap every Function1 field
- *    and save when one is invoked with `true`.
- */
 internal object InstantSaveHook {
 
     @Volatile
@@ -58,7 +50,6 @@ internal object InstantSaveHook {
 
     private val fieldCache = java.util.concurrent.ConcurrentHashMap<Class<*>, List<Field>>()
 
-    /** Function1 fields of a gesture lambda class, resolved once per class. */
     private fun function1Fields(cls: Class<*>, function1: Class<*>): List<Field> = fieldCache.getOrPut(cls) {
         cls.declaredFields.filter { !Modifier.isStatic(it.modifiers) && it.type == function1 }
             .onEach { it.isAccessible = true }
@@ -72,7 +63,6 @@ internal object InstantSaveHook {
                 if (method.name == "invoke" && args?.firstOrNull() == true) onLongPress()
                 method.invoke(original, *(args ?: emptyArray()))
             })
-            // Lambda capture fields are final; ART still lets accessible reflection write them.
             field.set(owner, proxy)
         } catch (t: Throwable) {
             ModuleLog.line("(NA|Instant) wrap ${field.name}: $t")

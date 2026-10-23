@@ -6,19 +6,11 @@ import de.robv.android.xposed.XC_MethodHook
 import io.github.nexalloy.R
 import java.lang.reflect.Method
 
-/**
- * "Download" entry in the story viewer's overflow menu (ReelOptionsOverflowHelper).
- *
- * The label builders return `CharSequence[]` or `ArrayList<CharSequence>`; we append our label.
- * The click dispatchers are `static void X(OnDismissListener, …, Helper, …, CharSequence)`;
- * when the tapped label is ours we take over. The helper holds the `ReelItem` of the frame.
- */
 internal object StoryDownloadHook {
 
     private fun label(): String =
         I18n.t(AndroidAppHelper.currentApplication(), R.string.ig_dl_title)
 
-    /** Drawable of `MediaOption.Option.DOWNLOAD`: the arrow shown in the post and reel menus. */
     @Volatile
     private var downloadIcon = 0
 
@@ -32,7 +24,6 @@ internal object StoryDownloadHook {
         ModuleLog.line("(NA|Story) download icon=$downloadIcon")
     }
 
-    /** Gives our row the download arrow; the mapper returns 0 for labels it doesn't know. */
     fun onIconResolved(param: XC_MethodHook.MethodHookParam) {
         if (!FeatureFlags.enableStoryDownload || downloadIcon == 0) return
         if (param.result != 0) return
@@ -117,7 +108,6 @@ internal object StoryDownloadHook {
         }
     }
 
-    /** The dispatcher is static; the helper (holding the ReelItem) is one of its arguments. */
     private fun findReelItem(param: XC_MethodHook.MethodHookParam): Any? {
         val type = MediaResolver.reelItemType ?: return null
         for (c in helperFirst(param)) {
@@ -127,7 +117,6 @@ internal object StoryDownloadHook {
         return null
     }
 
-    /** The menu helper (declaring class of the static dispatcher) first, then other arguments. */
     private fun helperFirst(param: XC_MethodHook.MethodHookParam): List<Any> {
         val helperClass = param.method.declaringClass
         val out = ArrayList<Any>()

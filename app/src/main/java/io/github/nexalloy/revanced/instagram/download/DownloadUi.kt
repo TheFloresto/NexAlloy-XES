@@ -19,7 +19,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import io.github.nexalloy.R
 
-/** What kind of media is being saved; picks the filename tag and the toast texts. */
 internal enum class MediaKind(val tag: String) {
     POST("post"), REEL("reel"), STORY("story"), INSTANT("instant"), PROFILE("profile");
 
@@ -51,7 +50,6 @@ internal object DownloadUi {
         )
     }
 
-    /** One item → save directly; a carousel → ask "current" or "all". Main thread. */
     fun offerItems(
         ctx: Context,
         items: List<MediaItem>,
@@ -90,7 +88,6 @@ internal object DownloadUi {
         )
     }
 
-    /** Story with both a still and a video (music stickers): let the user pick. */
     fun offerStoryChoice(ctx: Context, imageUrl: String?, videoUrl: String?, username: String?, mediaId: String?) {
         val rows = ArrayList<Row>()
         imageUrl?.let { url ->
@@ -138,7 +135,6 @@ internal object DownloadUi {
         )
     }
 
-    /** Copy after the menu closes; some ROMs drop clipboard writes from a dismissing window. */
     private fun copyToClipboard(ctx: Context, text: String, confirmation: String) {
         MediaSaver.mainHandler.postDelayed({
             try {
@@ -150,8 +146,6 @@ internal object DownloadUi {
             }
         }, 350)
     }
-
-    // region bottom sheet
 
     class Row(val label: String, val primary: Boolean = false, val action: () -> Unit)
 
@@ -278,5 +272,4 @@ internal object DownloadUi {
         cornerRadius = radiusPx
     }
 
-    // endregion
 }

@@ -109,7 +109,7 @@ internal object MediaSaver {
             val audio = Dash.bestAudio(tracks)
             val sharper = video != null && video.width + video.height > item.progressiveScore
             if (sharper && (audio != null || !Dash.hasSound(tracks))) {
-                val saved = runCatching { saveDash(ctx, video!!, audio, filename, username) }
+                val saved = runCatching { saveDash(ctx, video!!, audio, filename, username, item.url) }
                     .onFailure { ModuleLog.line("(NA|DL) DASH failed, saving the mp4: $it") }.isSuccess
                 if (saved) return
             }
@@ -117,12 +117,23 @@ internal object MediaSaver {
         downloadAndSave(ctx, item.url, filename, item.isVideo, username)
     }
 
-    private fun saveDash(ctx: Context, video: Dash.Track, audio: Dash.Track?, filename: String, username: String?) {
+    private fun saveDash(ctx: Context, video: Dash.Track, audio: Dash.Track?, filename: String, username: String?, progressive: String?) {
         val v = File.createTempFile("ie_dl_v_", ".mp4", ctx.cacheDir)
         val a = audio?.let { File.createTempFile("ie_dl_a_", ".mp4", ctx.cacheDir) }
         val out = File.createTempFile("ie_dl_", ".mp4", ctx.cacheDir)
         try {
             downloadToFile(video.url, v)
+            if (audio != null && Dash.isXheAac(audio) && progressive != null) {
+                val p = File.createTempFile("ie_dl_p_", ".mp4", ctx.cacheDir)
+                try {
+                    downloadToFile(progressive, p)
+                    val ok = runCatching { Dash.muxSoundFrom(v, p, out) }
+                        .onFailure { ModuleLog.line("(NA|DL) no plain sound for xHE-AAC reel: $it") }.isSuccess
+                    if (ok) return saveFileToDestination(ctx, out, filename, true, username)
+                } finally {
+                    p.delete()
+                }
+            }
             a?.let { downloadToFile(audio.url, it) }
             Dash.mux(listOfNotNull(v, a), out)
             saveFileToDestination(ctx, out, filename, true, username)
@@ -253,7 +264,7 @@ internal object MediaSaver {
         }
 
         @Suppress("DEPRECATION")
-        var dir = File(Environment.getExternalStorageDirectory(), "NexAlloy")
+        var dir = File(Environment.getExternalStoragePublicDirectory(rootFor(mimeType)), FOLDER)
         if (FeatureFlags.downloaderUsernameFolder && !username.isNullOrEmpty()) dir = File(dir, username)
         dir.mkdirs()
         return FileOutputStream(File(dir, filename))
@@ -276,8 +287,8 @@ internal object MediaSaver {
         val values = ContentValues()
         values.put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
         values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-        values.put(MediaStore.MediaColumns.RELATIVE_PATH, buildMediaStoreRelPath(username))
-        val itemUri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, buildMediaStoreRelPath(username, mimeType))
+        val itemUri = ctx.contentResolver.insert(collectionFor(mimeType), values)
             ?: throw Exception("MediaStore insert failed")
         return ctx.contentResolver.openOutputStream(itemUri)
             ?: throw Exception("MediaStore openOutputStream returned null")
@@ -288,9 +299,25 @@ internal object MediaSaver {
         "Ringtones", "Alarms", "Notifications", "Podcasts", "Audiobooks"
     )
 
-    private fun buildMediaStoreRelPath(username: String?): String {
+    private const val FOLDER = "Instagram"
+
+    private fun rootFor(mimeType: String) = when {
+        mimeType.startsWith("video/") -> Environment.DIRECTORY_MOVIES
+        mimeType.startsWith("audio/") -> Environment.DIRECTORY_MUSIC
+        else -> Environment.DIRECTORY_PICTURES
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun collectionFor(mimeType: String) = when {
+        FeatureFlags.downloaderCustomPath.isNotEmpty() -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        mimeType.startsWith("video/") -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        mimeType.startsWith("audio/") -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        else -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+    }
+
+    private fun buildMediaStoreRelPath(username: String?, mimeType: String): String {
         val customPath = FeatureFlags.downloaderCustomPath
-        var base = "Download/NexAlloy"
+        var base = "${rootFor(mimeType)}/$FOLDER"
         if (customPath.isNotEmpty() && !customPath.startsWith("content://")) {
             @Suppress("DEPRECATION")
             val extBase = Environment.getExternalStorageDirectory().absolutePath
@@ -308,7 +335,7 @@ internal object MediaSaver {
         if (url == null) return false
         if (!url.startsWith("http://") && !url.startsWith("https://")) return false
         if (!url.contains("cdninstagram.com") && !url.contains("fbcdn.net")) return false
-        if (url.contains("/t51.") && url.contains("-19/")) return false // profile pictures
+        if (url.contains("/t51.") && url.contains("-19/")) return false
         if (url.contains("t51.39750")) return false
         return true
     }

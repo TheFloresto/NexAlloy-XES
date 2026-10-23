@@ -29,13 +29,6 @@ import java.lang.reflect.Modifier
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/**
- * Adds a "Gallery" chip to the instant camera; the picked picture replaces the captured frame.
- *
- * On 451 the capture → upload path is a pair of suspend functions on the camera view model,
- * `static Object X(Context, Bitmap, …)` (see [instantCaptureMethods]). We swap the Bitmap
- * argument on the first call after a pick; resumed coroutine frames read their own saved state.
- */
 internal class InstantUploadHook {
 
     fun install(cl: ClassLoader, captureMethods: List<Method>) {
@@ -81,9 +74,9 @@ internal class InstantUploadHook {
             val onActive: XC_MethodHook = object : XC_MethodHook() {
                 override fun afterHookedMethod(p: MethodHookParam) {
                     if (!FeatureFlags.uploadInstants) return
-                    if (!lifecycleRegistered) registerLifecycle(cl) // app may not exist at patch time
+                    if (!lifecycleRegistered) registerLifecycle(cl)
                     val act = currentActivity() ?: return
-                    if (chip != null && chipHost === act) return // already shown, nothing to do
+                    if (chip != null && chipHost === act) return
                     MediaSaver.mainHandler.post { injectChip(act) }
                 }
             }
@@ -354,14 +347,9 @@ internal class InstantUploadHook {
         private fun dp(a: Activity, v: Int): Int =
             (v * a.resources.displayMetrics.density).roundToInt()
 
-        /** Resumed activity, tracked by the lifecycle callbacks registered in [registerLifecycle]. */
         @Volatile
         private var resumed: WeakReference<Activity>? = null
 
-        /**
-         * The foreground activity. Normally read from the tracked reference; the ActivityThread
-         * reflection only runs until the first onResume after the patch is installed.
-         */
         @Suppress("UNCHECKED_CAST")
         internal fun currentActivity(): Activity? {
             resumed?.get()?.let { return it }

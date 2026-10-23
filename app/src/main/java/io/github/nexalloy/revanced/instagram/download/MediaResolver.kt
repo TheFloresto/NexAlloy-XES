@@ -11,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap
 internal class MediaItem(
     @JvmField val url: String,
     @JvmField val isVideo: Boolean,
-    // Theo HushGram: manifest DASH của video (bản nét nhất player phát) và điểm (rộng + cao) của file mp4 tốt nhất để so.
     @JvmField val dashManifest: String? = null,
     @JvmField val progressiveScore: Long = 0,
 )
@@ -164,7 +163,6 @@ internal object MediaResolver {
             val list = runCatching { getter.invoke(media) as? List<*> }.getOrNull() ?: continue
             bestVideoVersion(list)?.let { return it }
         }
-        // Photos have an empty video_versions; only scan when the model says it is a video.
         if (isVideoMethod != null && !isVideo(media)) return null
         return scanForVideoUrl(media)
     }
@@ -323,7 +321,6 @@ internal object MediaResolver {
             if (r is List<*>) {
                 for (e in r) best = maxOf(best, imageCandidate(e))
             } else if (isAppModel(r.javaClass.name)) {
-                // AdditionalCandidates: a few ExtendedImageUrl getters.
                 for (sub in getterCache(r.javaClass, extendedImageUrlClass ?: imageUrlClass)) {
                     best = maxOf(best, imageCandidate(runCatching { sub.invoke(r) }.getOrNull()))
                 }
@@ -467,7 +464,6 @@ internal object MediaResolver {
                     type.isAssignableFrom(r)
                 } else {
                     List::class.java.isAssignableFrom(r) ||
-                        // AdditionalCandidates only; SpriteSheetInfoCandidates are scrubber tiles.
                         (!r.isPrimitive && r.name.endsWith(".AdditionalCandidates"))
                 }
             }.onEach { runCatching { it.isAccessible = true } }
@@ -475,4 +471,5 @@ internal object MediaResolver {
 
     private fun load(cl: ClassLoader, name: String): Class<*>? =
         runCatching { cl.loadClass(name) }.getOrNull()
+
 }

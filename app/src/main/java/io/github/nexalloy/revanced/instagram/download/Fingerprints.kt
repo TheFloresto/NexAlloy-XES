@@ -309,11 +309,13 @@ private fun DexKitBridge.pandoGetter(type: String, field: String, returns: Strin
             if (returns != null) returnType = returns
             usingNumbers(field.hashCode())
         }
-    }.single { !Modifier.isStatic(it.modifiers) && '.' in it.returnTypeName } // getter object, bỏ hàm "có field không" kiểu boolean
+    }.single { !Modifier.isStatic(it.modifiers) && '.' in it.returnTypeName }
 
 val mediaDashManifestGetterFingerprint = findMethodDirect { pandoGetter(MEDIA_CLASS, "video_dash_manifest", STRING) }
+
 val mediaMusicMetadataGetterFingerprint = findMethodDirect { pandoGetter(MEDIA_CLASS, "music_metadata", null) }
 val mediaClipsMetadataGetterFingerprint = findMethodDirect { pandoGetter(MEDIA_CLASS, "clips_metadata", null) }
+
 val musicTrackGetterFingerprint = findMethodDirect { pandoGetter(PANDO_MUSIC_INFO, "music_asset_info", TRACK_DATA) }
 val musicConsumptionGetterFingerprint = findMethodDirect { pandoGetter(PANDO_MUSIC_INFO, "music_consumption_info", MUSIC_CONSUMPTION) }
 val trackUrlGetterFingerprint = findMethodDirect { pandoGetter(PANDO_TRACK_DATA, "progressive_download_url", STRING) }
@@ -332,3 +334,4 @@ val reelMenuRowAdderFingerprint = findMethodDirect {
             p[4] == "java.lang.Integer" && p[5] == STRING
     }
 }
+

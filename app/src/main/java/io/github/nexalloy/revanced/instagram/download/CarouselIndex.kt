@@ -8,14 +8,8 @@ import android.view.ViewGroup
 import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 
-/** Which slide of a carousel is on screen. */
 internal object CarouselIndex {
 
-    /**
-     * Looks for exactly one horizontal pager (ViewPager or RecyclerView) whose adapter holds
-     * [size] items and returns its current position, or -1 when none or several match.
-     * Main thread only.
-     */
     fun fromWindow(ctx: Context?, size: Int): Int {
         if (size <= 1) return 0
         val activity = activityOf(ctx) ?: return -1
@@ -28,7 +22,6 @@ internal object CarouselIndex {
         }
     }
 
-    /** Last resort: a small int field on the menu controller that fits the carousel. */
     fun fromFields(obj: Any?, size: Int): Int {
         if (obj == null || size <= 1) return 0
         runCatching {
@@ -80,7 +73,7 @@ internal object CarouselIndex {
         if (count(adapter) != size) return null
         val lm = call(view, "getLayoutManager") ?: return null
         val orientation = call(lm, "getOrientation") as? Int
-        if (orientation != null && orientation != 0) return null // vertical: a feed, not a carousel
+        if (orientation != null && orientation != 0) return null
         for (getter in arrayOf("findFirstCompletelyVisibleItemPosition", "findFirstVisibleItemPosition")) {
             val v = call(lm, getter) as? Int ?: continue
             if (v >= 0) return v
