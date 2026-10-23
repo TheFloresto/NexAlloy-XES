@@ -27,7 +27,6 @@ private const val INTEGER = "java.lang.Integer"
 private const val ITERABLE = "java.lang.Iterable"
 private const val SERIALIZABLE = "java.io.Serializable"
 
-// R8 in newer builds (5.20.7x) narrows some declared types (List -> ArrayList, Object -> Serializable, ...).
 private val LIST_TYPES = setOf(LIST, ARRAY_LIST)
 private val OBJECT_TYPES = setOf(OBJECT, SERIALIZABLE)
 
@@ -96,10 +95,6 @@ internal val hasAccessToServerFingerprint = findMethodDirect {
     }.filter { it.isStatic() }.only("hasAccessToServer") { it.descriptor }
 }
 
-/**
- * Newer builds inline [haveAccessWithFingerprint] into ServerGroup.hasAccessibleServer(Integer).
- * The public method name and the abstract getServerList() survive R8 on both builds.
- */
 internal val serverGroupHasAccessibleServerFingerprint = findMethodDirect {
     findMethod {
         matcher {
@@ -111,10 +106,6 @@ internal val serverGroupHasAccessibleServerFingerprint = findMethodDirect {
     }.only("ServerGroup.hasAccessibleServer(Integer)") { it.descriptor }
 }
 
-/**
- * Newer builds turn the server list filter into a lambda: ctor(includeFree: Boolean, ServerFilterType, ...),
- * invoke(Object server): Object.
- */
 internal val serverListFilterLambdaFingerprint = findMethodDirect {
     val filterEnum = io.github.nexalloy.hoodles.morphe.protonvpn.freeservers.serverFilterTypeEnum(this).name
     findMethod {
@@ -130,7 +121,6 @@ internal val serverListFilterLambdaFingerprint = findMethodDirect {
     }.only("server list filter lambda") { it.descriptor }
 }
 
-/** The lambda field holding `includeFree` (first boolean field read by the lambda). */
 internal val serverListFilterIncludeFreeField = findFieldDirect {
     val invoke = serverListFilterLambdaFingerprint(this)
     invoke.instructions.firstOrNull { it.opcodeEnum == Opcode.IGET_BOOLEAN && it.fieldRef?.className == invoke.className }
@@ -264,7 +254,6 @@ internal val profileCountriesFingerprint = findMethodDirect {
     val owner = getVpnCountries.className
     getVpnCountries.callers
         .filter { it.className != owner && !it.className.startsWith("$owner\$") }
-        // newer builds flatten inner lambdas of the owner into sibling classes of the same package
         .filter { it.className.substringBeforeLast('.', "") != owner.substringBeforeLast('.', "") }
         .distinctBy { it.descriptor }
         .only("ProfilesServerDataAdapter.countries") { it.descriptor }
@@ -319,7 +308,6 @@ internal val freeUserChangeServerStateField = findFieldDirect {
     val previousStore = insns.subList(0, storeIndex)
         .indexOfLast { it.opcodeEnum == Opcode.IPUT_OBJECT && it.fieldRef?.className == owner.name }
 
-    // The flow field assigned right before the collected one (VPN-state-gated change-server flow).
     if (previousStore < 0) throw Exception("no field store before the state flow store")
     insns[previousStore].fieldRef!!.also {
         if (it.descriptor == stateField.descriptor) throw Exception("previous store is the state field itself")

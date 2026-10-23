@@ -99,7 +99,7 @@ val UnlockVpnPlus = patch(
         before { param -> param.args[0] = arrayListOf<Any>(standardProfileType) }
     }
 
-    run { // profile cities/servers → chỉ server free
+    run {
         val getServerList = ::vpnCountryGetServerListFingerprint.method
         ::profileServerListReadersFingerprints.dexMethodList.ifEmpty { error("no profile server list readers") }
             .forEach { reader ->
@@ -123,7 +123,7 @@ val UnlockVpnPlus = patch(
         }
     })
 
-    run { // nút đổi server
+    run {
         val getRandomServer = ::serverManager2GetRandomServerFingerprint.method
         val serverManagerField = ::serverManager2ServerManagerField.field.apply { isAccessible = true }
         val getExitCountries = ::serverManagerExitCountriesFingerprint.method.apply { isAccessible = true }
