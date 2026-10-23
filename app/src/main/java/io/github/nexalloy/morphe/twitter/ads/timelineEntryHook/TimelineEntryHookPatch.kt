@@ -81,7 +81,6 @@ private fun moduleShapeOf(item: Any, itemInterface: Class<*>): ModuleShape? {
         field.isAccessible = true
         val first = (field.get(item) as? List<*>)?.firstOrNull { it != null }
         if (first == null) {
-            // Empty list: cannot tell yet whether this class is a module.
             undetermined = true
             continue
         }
