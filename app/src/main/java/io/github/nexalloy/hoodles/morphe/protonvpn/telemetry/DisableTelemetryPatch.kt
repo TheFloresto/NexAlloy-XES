@@ -17,7 +17,6 @@ val DisableTelemetry = patch(
     val doNothing = XC_MethodReplacement.returnConstant(null)
     val returnUnit = XC_MethodReplacement.returnConstant(Unit)
 
-    // TelemetryManager.enqueue (suspend, marked by "core.telemetry.enqueue") is the single entry point.
     hookOnce(::coreTelemetryEnqueueFingerprint.dexMethod, returnUnit)
     hookOnce(::vpnTelemetryEventFingerprint.dexMethod, returnUnit)
     hookOnce(::observabilityUploadFingerprint.dexMethod, returnUnit)
