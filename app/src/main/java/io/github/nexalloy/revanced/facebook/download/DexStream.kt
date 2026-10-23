@@ -41,7 +41,6 @@ internal class DexStream private constructor(val items: List<Item>) {
             val items = method.opCodes.map { op ->
                 when {
                     isString(op) -> Item.Str(op, strings[s++])
-                    // const-wide: intValue() ném lỗi → lấy longValue rồi cắt về int.
                     isNumber(op) -> Item.Num(op, numbers[n++].longValue().toInt())
                     isField(op) -> Item.Field(op, fields[f++].field)
                     isCall(op) -> Item.Call(op, calls[c++])

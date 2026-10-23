@@ -174,6 +174,28 @@ val storySaveCapabilityFingerprint = findMethodDirect {
     asks.singleOrNull() ?: error("Expected 1 save capability check, found ${asks.size}")
 }
 
+val storySaveCapabilityCacheFieldFingerprint = findFieldDirect {
+    val owner = storySaveCapabilityFingerprint().className
+    val stream = DexStream.of(storyMenuBuilderFingerprint()) ?: error("Could not read the story menu builder")
+    stream.items.filterIsInstance<DexStream.Item.Field>().map { it.field }
+        .first { it.className == owner && it.typeName == "java.lang.Boolean" }
+}
+
+val storyMoreMenuFingerprint = findMethodDirect {
+    val builder = storyMenuBuilderFingerprint().descriptor
+    val menus = getClassData(STORY_VIEWER_MORE_MENU)!!.methods.filter { m ->
+        Modifier.isStatic(m.modifiers) && m.paramTypeNames.contains(STORY_VIEWER_MORE_MENU) && m.invokes.any { it.descriptor == builder }
+    }
+    menus.singleOrNull() ?: error("Expected 1 story more menu, found ${menus.size}")
+}
+
+val storyMenuRowClassFingerprint = findClassDirect {
+    val action = storySaveActionClassFingerprint().name
+    val rows = storyMenuBuilderFingerprint().invokes.filter { it.isConstructor && it.className != action && !it.className.startsWith("java.") }
+        .map { it.className }.distinct()
+    getClassData(rows.singleOrNull() ?: error("Expected 1 story menu row class, found $rows"))!!
+}
+
 private const val CLEAR_MODE_ROW = "fds_control_clear_mode"
 private const val OWN_DOWNLOAD_ROW = "fds_control_download_video"
 

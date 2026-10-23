@@ -25,8 +25,6 @@ import java.net.URL
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-// Tải và lưu vào thư viện (Movies/Facebook, Pictures/Facebook). Mọi việc nặng chạy ở luồng nền,
-// chỉ khi người dùng bấm; không có gì chạy thường trực.
 internal object MediaSaver {
 
     private const val FOLDER = "Facebook"
@@ -40,7 +38,6 @@ internal object MediaSaver {
     @Volatile
     private var module: Context? = null
 
-    // Chuỗi nằm trong resource của module (values + values-vi), như phần tải của Instagram.
     fun t(ctx: Context, @StringRes id: Int, vararg args: Any?): String = runCatching {
         val res = module ?: ctx.createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY).also { module = it }
         if (args.isEmpty()) res.getString(id) else res.getString(id, *args)
@@ -51,9 +48,6 @@ internal object MediaSaver {
         main.post { runCatching { Toast.makeText(ctx, text, Toast.LENGTH_SHORT).show() } }
     }
 
-    // ---- lối vào ----
-
-    // Video: ưu tiên manifest DASH (chất lượng cao nhất, ghép hình + tiếng không mã hóa lại), không được thì file thường.
     fun saveVideo(ctx: Context, id: String?, manifest: String?, urls: List<String>): Boolean {
         val files = urls.filter { Urls.isHttp(it) && Urls.isFacebookCdn(it) && !it.contains("<MPD") }.distinct()
         val tracks = manifest?.let { Dash.parse(it) }.orEmpty()
@@ -65,7 +59,7 @@ internal object MediaSaver {
         return start(ctx, R.string.fb_dl_saved_video) {
             val name = fileName(id, "mp4")
             if (dash) {
-                val saved = runCatching { saveDash(ctx, video!!, audio, name) }.onFailure {
+                val saved = runCatching { saveDash(ctx, video!!, audio, name, file) }.onFailure {
                     if (file == null) throw it
                     Logger.printInfo { "Facebook: DASH save failed, saving the file instead: ${it.message}" }
                 }.isSuccess
@@ -102,8 +96,6 @@ internal object MediaSaver {
         return true
     }
 
-    // ---- tải ----
-
     private fun fileName(id: String?, ext: String) =
         "facebook_${id?.takeIf { it.all(Char::isDigit) } ?: "media"}_${System.currentTimeMillis()}.$ext"
 
@@ -128,7 +120,6 @@ internal object MediaSaver {
             download(url, file)
             if (video) return publish(ctx, file, name, "video/mp4", video = true)
             val (mime, ext) = imageType(file)
-            // AVIF: thư viện của nhiều máy chưa đọc được → đổi sang JPEG.
             if (mime == "image/avif") {
                 val jpeg = avifToJpeg(ctx, file)
                 try { publish(ctx, jpeg, name, "image/jpeg", video = false) } finally { jpeg.delete() }
@@ -164,13 +155,19 @@ internal object MediaSaver {
         return jpeg
     }
 
-    // Ghép track hình và track tiếng (mỗi cái một file mp4) bằng MediaMuxer, không mã hóa lại.
-    private fun saveDash(ctx: Context, video: Dash.Track, audio: Dash.Track?, name: String) {
+    private fun saveDash(ctx: Context, video: Dash.Track, audio: Dash.Track?, name: String, progressive: String?) {
         val v = temp(ctx, ".v.mp4")
+        val xhe = audio != null && Dash.isXheAac(audio) && progressive != null
         val a = audio?.let { temp(ctx, ".a.mp4") }
         val out = temp(ctx, ".mp4")
         try {
             download(video.url, v)
+            if (xhe) {
+                download(progressive!!, a!!)
+                val ok = runCatching { Dash.muxSoundFrom(v, a, out) }.isSuccess
+                if (ok) return publish(ctx, out, name, "video/mp4", video = true)
+                Logger.printInfo { "Facebook: sound from the plain file failed, keeping the DASH sound" }
+            }
             a?.let { download(audio.url, it) }
             Dash.mux(listOfNotNull(v, a), out)
             publish(ctx, out, name, "video/mp4", video = true)
@@ -178,8 +175,6 @@ internal object MediaSaver {
             v.delete(); a?.delete(); out.delete()
         }
     }
-
-    // ---- ghi vào thư viện ----
 
     private fun publish(ctx: Context, file: File, name: String, mime: String, video: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

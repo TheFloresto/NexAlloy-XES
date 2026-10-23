@@ -6,7 +6,6 @@ import io.github.nexalloy.revanced.shared.media.Dash
 import java.util.IdentityHashMap
 import java.util.Locale
 
-// Đọc model GraphQL của Facebook qua API giữ nguyên tên của TreeJNI (getString/getTree/getIntValue theo hash).
 internal object GraphModel {
     private fun isTree(value: Any?): Boolean {
         var type: Class<*>? = value?.javaClass ?: return false
@@ -44,7 +43,6 @@ internal object GraphModel {
     fun callGetter(host: Any?, name: String): Any? = runCatching { host!!.javaClass.getMethod(name).invoke(host) }.getOrNull()
 }
 
-// Nguồn video mà player giữ: card/bài viết chỉ có link 360p, player cùng video giữ manifest DASH tới 1080p.
 internal class VideoSource(val videoId: String?, val hd: String?, val manifest: String?)
 
 internal object PlayerSources {
@@ -54,7 +52,6 @@ internal object PlayerSources {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, VideoSource>) = size > MAX
     }
 
-    // Gọi cuối constructor VideoPlayerParams.
     fun remember(params: Any, idField: Field, hdField: Field, manifestField: Field) {
         val id = idField.get(params) as? String ?: return
         val source = Reflect.fieldOfType(params, VIDEO_DATA_SOURCE) ?: return
@@ -66,7 +63,6 @@ internal object PlayerSources {
 
     fun byId(id: String?): VideoSource? = id?.let { synchronized(sources) { sources[it] } }
 
-    // Story card không nói id ở field cố định → dò các chuỗi số ngắn trong card rồi tra.
     fun find(card: Any?): VideoSource? {
         val ids = mutableListOf<String>()
         Reflect.walk(card, 3) { text ->
@@ -91,7 +87,6 @@ internal object Reflect {
         return null
     }
 
-    // Duyệt field có rào (độ sâu, số node, chỉ class của Facebook) để không lan ra cả app.
     fun walk(host: Any?, maxDepth: Int, keep: (String) -> Boolean): List<String> {
         val found = mutableListOf<String>()
         if (host == null) return found
@@ -105,15 +100,23 @@ internal object Reflect {
                 for (field in runCatching { type.declaredFields }.getOrDefault(emptyArray())) {
                     if (Modifier.isStatic(field.modifiers)) continue
                     val value = runCatching { field.isAccessible = true; field.get(node) }.getOrNull() ?: continue
-                    if (value is CharSequence) {
+                    if (isText(value)) {
                         val text = value.toString()
                         if (keep(text)) found += text
+                        continue
+                    }
+                    if (value.javaClass.isArray && !value.javaClass.componentType!!.isPrimitive) {
+                        val length = java.lang.reflect.Array.getLength(value)
+                        for (i in 0 until minOf(length, MAX_ARRAY)) {
+                            val item = java.lang.reflect.Array.get(value, i) ?: continue
+                            if (isText(item)) item.toString().let { if (keep(it)) found += it }
+                        }
                         continue
                     }
                     if (depth >= maxDepth) continue
                     if (value is Iterable<*>) {
                         value.take(16).forEach { item ->
-                            if (item is CharSequence) item.toString().let { if (keep(it)) found += it }
+                            if (item != null && isText(item)) item.toString().let { if (keep(it)) found += it }
                             else if (item != null && isFacebook(item) && seen.put(item, true) == null) queue.add(item to depth + 1)
                         }
                         continue
@@ -125,6 +128,10 @@ internal object Reflect {
         }
         return found
     }
+
+    private const val MAX_ARRAY = 256
+
+    private fun isText(value: Any) = value is CharSequence || value.javaClass.name.startsWith("android.net.Uri")
 
     private fun isFacebook(value: Any) = value.javaClass.name.let { it.startsWith("com.facebook.") || it.startsWith("X.") }
 }

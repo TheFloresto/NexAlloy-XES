@@ -63,6 +63,12 @@ internal object PhotoSize {
         return if (own != null && asked <= ownArea) own else full
     }
 
+    fun story(image: Any?): String? {
+        val own = GraphModel.string(image, "uri")?.takeIf { it.isNotEmpty() } ?: return null
+        val held = area(image).takeIf { it > 0 } ?: size(runCatching { Uri.parse(own).getQueryParameter("ctp") }.getOrNull(), ASKED) ?: 0
+        return better(own, held, own)
+    }
+
     fun photo(photo: Any?): String? {
         if (!GraphModel.isLive(photo)) return null
         val largest = IMAGES.map { GraphModel.tree(photo, it) }
