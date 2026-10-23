@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Vietnamese strings for the Instagram download patches. -->
 <resources>
     <string name="ig_copy_link_all">Sao chép cả %1$d liên kết</string>
     <string name="ig_copy_link_copied">Đã sao chép liên kết media</string>
@@ -23,7 +22,7 @@
     <string name="ig_story_download_choice_title">Tải story</string>
     <string name="ig_story_download_photo">Tải ảnh</string>
     <string name="ig_story_download_video_music">Tải video kèm nhạc</string>
-    <string name="ig_toast_all_items_saved">Đã lưu cả %1$d mục vào thư mục NexAlloy</string>
+    <string name="ig_toast_all_items_saved">Đã lưu cả %1$d mục vào Pictures/Instagram và Movies/Instagram</string>
     <string name="ig_toast_download_failed">Tải thất bại: %1$s</string>
     <string name="ig_toast_downloading">Đang tải…</string>
     <string name="ig_toast_downloading_all_n_items">Đang tải cả %1$d mục…</string>
@@ -39,15 +38,15 @@
     <string name="ig_toast_no_media">Không tìm thấy media</string>
     <string name="ig_toast_no_media_for_post">Không tìm thấy media cho bài viết này</string>
     <string name="ig_toast_no_reel_url_scroll">Không tìm thấy URL reel — hãy lướt qua reel trước</string>
-    <string name="ig_toast_photo_saved">Đã lưu ảnh vào thư mục NexAlloy</string>
+    <string name="ig_toast_photo_saved">Đã lưu ảnh vào Pictures/Instagram</string>
     <string name="ig_toast_post_url_not_found">Không tìm thấy URL bài viết</string>
     <string name="ig_toast_profile_pic_saved">Đã lưu ảnh đại diện!</string>
     <string name="ig_toast_profile_pic_url_not_found">Không lấy được URL ảnh đại diện</string>
     <string name="ig_toast_reel_failed">Tải reel thất bại: %1$s</string>
-    <string name="ig_toast_reel_saved">Đã lưu reel vào thư mục NexAlloy</string>
+    <string name="ig_toast_reel_saved">Đã lưu reel vào Movies/Instagram</string>
     <string name="ig_toast_reel_url_not_found">Không tìm thấy URL reel</string>
-    <string name="ig_toast_saved">Đã lưu vào thư mục NexAlloy</string>
-    <string name="ig_toast_story_saved">Đã lưu story vào thư mục NexAlloy</string>
+    <string name="ig_toast_saved">Đã lưu vào thư mục Instagram</string>
+    <string name="ig_toast_story_saved">Đã lưu story vào thư mục Instagram</string>
     <string name="ig_toast_story_url_not_found">Không tìm thấy URL story</string>
-    <string name="ig_toast_video_saved">Đã lưu video vào thư mục NexAlloy</string>
+    <string name="ig_toast_video_saved">Đã lưu video vào Movies/Instagram</string>
 </resources>
