@@ -9,7 +9,6 @@ internal object LinkShim {
     private val INTERNAL_HOSTS = listOf("facebook.com", "fb.com", "messenger.com", "meta.com")
     private val SHORT_LINK_HOSTS = listOf("fb.watch", "fbwat.ch", "fb.me", "fb.gg", "fb.audio", "m.me")
 
-
     private val WARNING_PATHS = listOf("/flx/warn/", "/fblynx/warn/", "/si/linkclick/warn/")
 
     private val PATH_SHIM = Regex("^/l/([a-zA-Z0-9_.-]*)(?:;|/)(.*)$")

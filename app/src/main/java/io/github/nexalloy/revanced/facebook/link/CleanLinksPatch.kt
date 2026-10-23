@@ -21,7 +21,6 @@ val CleanLinks = patch(
             .forEach { m ->
                 m.hookMethod {
                     before { param ->
-                        // Chạy lúc app mở link (runtime) → giữ để không làm hỏng việc mở link.
                         runCatching {
                             val intent = param.args.getOrNull(0) as? Intent ?: return@runCatching
                             val url = intent.dataString ?: return@runCatching
