@@ -28,7 +28,7 @@ val DisableScreenCaptureDetection = patch(
     name = "Disable screen capture detection",
     description = "Prevents TikTok from reacting to screenshots and screen recordings.",
 ) {
-    run { // screenCaptureCallback
+    run {
         val methods = Activity::class.java.declaredMethods.filter {
             it.name == "registerScreenCaptureCallback" || it.name == "unregisterScreenCaptureCallback"
         }
@@ -40,13 +40,13 @@ val DisableScreenCaptureDetection = patch(
         }
     }
 
-    run { // clearModeDisplayListener
+    run {
         val listeners = ::clearModeDisplayListenerFingerprints.dexMethodList.realMatches()
         check(listeners.isNotEmpty()) { "ClearModePanelComponent display listener not found" }
         listeners.forEach { it.toMethod().hookMethod(XC_MethodReplacement.DO_NOTHING) }
     }
 
-    run { // screenshotTasks
+    run {
         val hooked = SCREENSHOT_TASKS.count { name ->
             val task = name.findClassOrNull(classLoader) ?: return@count false
             val run = task.declaredMethods
@@ -58,7 +58,7 @@ val DisableScreenCaptureDetection = patch(
         check(hooked > 0) { "none of the ${SCREENSHOT_TASKS.size} screenshot tasks found" }
     }
 
-    run { // screenshotFeedback
+    run {
         val service = SCREENSHOT_FEEDBACK_SERVICE.findClassOrNull(classLoader)
             ?: error("$SCREENSHOT_FEEDBACK_SERVICE not found")
         val methods = service.declaredMethods.filter {

@@ -23,7 +23,7 @@ val AllowScreenshots = patch(
 ) {
     val int = Int::class.javaPrimitiveType!!
 
-    run { // Window.addFlags
+    run {
         Window::class.java.getDeclaredMethod("addFlags", int).hookMethod {
             before { param ->
                 val flags = param.args[0] as Int
@@ -32,7 +32,7 @@ val AllowScreenshots = patch(
         }
     }
 
-    run { // Window.setFlags
+    run {
         Window::class.java.getDeclaredMethod("setFlags", int, int).hookMethod {
             before { param ->
                 param.args[0] = (param.args[0] as Int) and SECURE.inv()
@@ -41,13 +41,13 @@ val AllowScreenshots = patch(
         }
     }
 
-    run { // Window.setAttributes
+    run {
         Window::class.java.getDeclaredMethod("setAttributes", WindowManager.LayoutParams::class.java).hookMethod {
             before { param -> (param.args[0] as? WindowManager.LayoutParams)?.clearSecure() }
         }
     }
 
-    run { // WindowManagerImpl
+    run {
         val impl = Class.forName("android.view.WindowManagerImpl")
         listOf("addView", "updateViewLayout").forEach { name ->
             impl.getDeclaredMethod(name, View::class.java, ViewGroup.LayoutParams::class.java).hookMethod {
@@ -57,12 +57,12 @@ val AllowScreenshots = patch(
     }
 
 
-    run { // paidLiveCourseSetting
+    run {
         val setting = PAID_LIVE_COURSE_SETTING.findClassOrNull(classLoader) ?: error("$PAID_LIVE_COURSE_SETTING not found")
         setting.getDeclaredMethod("getValue").hookMethod(XC_MethodReplacement.returnConstant(false))
     }
 
-    run { // circleSearchBlock
+    run {
         val getters = ::circleSearchBlockSettingFingerprints.dexMethodList.realMatches()
         check(getters.isNotEmpty()) { "circle_search_block setting not found" }
         getters.forEach { getter ->
