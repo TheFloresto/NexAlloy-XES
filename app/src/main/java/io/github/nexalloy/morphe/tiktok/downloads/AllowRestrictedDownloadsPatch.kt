@@ -20,7 +20,7 @@ val AllowRestrictedDownloads = patch(
     description = "Shows and enables \"Save video\" (and save photo / GIF / Live Photo) even when " +
         "the creator turned downloads off, and keeps the sound in saved videos.",
 ) {
-    run { // downloadVerdicts
+    run {
         val share = AWEME_ACL_SHARE_CLASS.findClassOrNull(classLoader) ?: error("$AWEME_ACL_SHARE_CLASS not found")
         val getters = share.declaredMethods.filter {
             it.parameterCount == 0 && it.name.startsWith(DOWNLOAD_ACL_GETTER_PREFIX) &&
@@ -34,7 +34,7 @@ val AllowRestrictedDownloads = patch(
         }
     }
 
-    run { // preventDownload
+    run {
         val aweme = AWEME_CLASS.findClassOrNull(classLoader) ?: error("$AWEME_CLASS not found")
         val getters = aweme.declaredMethods.filter {
             it.parameterCount == 0 && it.returnType == Boolean::class.javaPrimitiveType &&
@@ -45,9 +45,9 @@ val AllowRestrictedDownloads = patch(
     }
 
 
-    run { // deoptimize readers
+    run {
         val readers = ::downloadPermissionReaderFingerprints.dexMethodList.realMatches()
-            .filterNot { it.isStaticInitializer } // toMember() throws on <clinit>
+            .filterNot { it.isStaticInitializer }
             .map { it.toMember() }
             .distinct()
         check(readers.isNotEmpty()) { "no reader found" }
