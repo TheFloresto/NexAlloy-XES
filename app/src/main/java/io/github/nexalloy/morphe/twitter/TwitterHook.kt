@@ -12,22 +12,17 @@ import io.github.nexalloy.morphe.twitter.timeline.showpollresults.ShowPollResult
 import io.github.nexalloy.morphe.twitter.timeline.banner.HideBanner
 
 val TwitterPatches: Array<Patch> = arrayOf(
-    // Ads / recommendations
     HideAds,
     HideRecommendationItems,
 
-    // Links
     NoShortenedUrl,
 
-    // Premium
     RemovePremiumUpsell,
     UnlockDownloads,
 
-    // Timeline / video
     ForceTranslate,
     ShowPollResults,
     HideBanner,
 
-    // Appearance
     DisableBlur,
 )
