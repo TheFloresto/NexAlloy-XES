@@ -27,7 +27,7 @@ val DisableTelemetry = patch(
         it.name in names && Modifier.isStatic(it.modifiers) && it.returnType == Void.TYPE
     }
 
-    run { // AppLog + legacyAppLog: tùy bản có một hoặc cả hai → hook cái có, cần ít nhất 1.
+    run {
         val entryPoints =
             APP_LOG_CLASS.findClassOrNull(classLoader)?.staticVoidMethods(APP_LOG_ENTRY_POINTS).orEmpty() +
                 LEGACY_APP_LOG_CLASS.findClassOrNull(classLoader)?.staticVoidMethods(LEGACY_APP_LOG_ENTRY_POINTS).orEmpty()
@@ -35,7 +35,7 @@ val DisableTelemetry = patch(
         entryPoints.forEach { it.hookMethod(XC_MethodReplacement.DO_NOTHING) }
     }
 
-    run { // startupTasks
+    run {
         val hooked = TELEMETRY_STARTUP_TASKS.count { name ->
             val run = name.findClassOrNull(classLoader)
                 ?.declaredMethods?.firstOrNull { it.name == "run" && it.parameterTypes.contentEquals(arrayOf<Class<*>>(Context::class.java)) }
@@ -46,19 +46,19 @@ val DisableTelemetry = patch(
         check(hooked > 0) { "none of the ${TELEMETRY_STARTUP_TASKS.size} startup tasks found" }
     }
 
-    run { // appsFlyerEvents
+    run {
         val methods = ::appsFlyerEventFingerprints.dexMethodList.realMatches()
         check(methods.isNotEmpty()) { "no AppsFlyer implementation found" }
         methods.forEach { it.toMethod().hookMethod(XC_MethodReplacement.DO_NOTHING) }
     }
 
-    run { // firebaseScreens
+    run {
         FIREBASE_ANALYTICS_CLASS.findClassOrNull(classLoader)!!
             .getDeclaredMethod("setCurrentScreen", Activity::class.java, String::class.java, String::class.java)
             .hookMethod(XC_MethodReplacement.DO_NOTHING)
     }
 
-    run { // monitorCrash
+    run {
         val methods = MONITOR_CRASH_CLASS.findClassOrNull(classLoader)!!.declaredMethods.filter {
             (it.name == "reportCustomErr" || it.name == "reportEvent") && it.returnType == Void.TYPE
         }
@@ -66,25 +66,25 @@ val DisableTelemetry = patch(
         methods.forEach { it.hookMethod(XC_MethodReplacement.DO_NOTHING) }
     }
 
-    run { // packSend
+    run {
         val methods = ::appLogPackSendFingerprints.dexMethodList.realMatches()
         check(methods.size == 1) { "expected one AppLog pack send, found ${methods.size}" }
         methods.single().toMethod().hookMethod(XC_MethodReplacement.returnConstant(PACK_SENT_STATUS))
     }
 
-    run { // forwardSend
+    run {
         val methods = ::appLogForwardSendFingerprints.dexMethodList.realMatches()
         check(methods.size == 1) { "expected one AppLog forward send, found ${methods.size}" }
         methods.single().toMethod().hookMethod(XC_MethodReplacement.DO_NOTHING)
     }
 
-    run { // installActiveCheck
+    run {
         val methods = ::installActiveCheckFingerprints.dexMethodList.realMatches()
         check(methods.size == 1) { "expected one activation check, found ${methods.size}" }
         methods.single().toMethod().hookMethod(XC_MethodReplacement.returnConstant(true))
     }
 
-    run { // prioritySend
+    run {
         val callback = APP_LOG_PRIORITY_CALLBACK_CLASS.findClassOrNull(classLoader)!!
         val response = APP_LOG_PRIORITY_RESPONSE_CLASS.findClassOrNull(classLoader)!!
             .getDeclaredConstructor(Int::class.javaPrimitiveType, String::class.java, String::class.java)
