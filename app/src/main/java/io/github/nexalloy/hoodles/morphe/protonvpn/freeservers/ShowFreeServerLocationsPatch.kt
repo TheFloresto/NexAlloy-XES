@@ -61,7 +61,7 @@ val ShowFreeServerLocations = patch(
         ctor.hookMethod { before { param -> param.args[2] = emptyList<Any>() } }
     }
 
-    run { // header "free locations"
+    run {
         val allCountries = getResourceId(ResourceType.STRING, "country_filter_all_list_header")
         val plusCountries = getResourceId(ResourceType.STRING, "country_filter_all_list_header_free")
         val freeLocations = getResourceId(ResourceType.STRING, "free_connections_info_server_locations")
