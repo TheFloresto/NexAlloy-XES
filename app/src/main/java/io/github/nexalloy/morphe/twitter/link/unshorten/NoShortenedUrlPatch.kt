@@ -7,7 +7,7 @@ val NoShortenedUrl = patch(
     name = "No shortened URL",
     description = "Gets rid of t.co short urls by showing the expanded URL instead.",
 ) {
-    run { // UrlEntity constructor
+    run {
         var hooked = 0
 
         for (constructor in UrlEntityToStringFingerprint.declaredClass.declaredConstructors) {
