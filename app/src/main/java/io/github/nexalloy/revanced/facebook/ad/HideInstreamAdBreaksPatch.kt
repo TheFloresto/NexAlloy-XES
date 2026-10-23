@@ -11,8 +11,6 @@ val HideInstreamAdBreaks = patch(
     name = "Hide in-stream ad breaks",
     description = "Removes mid-roll ad breaks and the docked sponsored card from videos and live replays.",
 ) {
-    // dexMethodList không ném lỗi khi không tìm thấy, nên kiểm tra rỗng để còn hoãn/báo lỗi.
-    // (Bản cũ dùng runCatching{}.getOrElse{ error() } nên chốt này không bao giờ chạy.)
     val extensionGates = ::videoViewerExtensionGateMethodsFingerprint.dexMethodList
     check(extensionGates.isNotEmpty()) { "Facebook video permalink dex is not visible yet - deferring patch" }
 

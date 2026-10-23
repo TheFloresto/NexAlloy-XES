@@ -64,7 +64,6 @@ val HideFacebookAds = patch(
     name = "Hide Facebook ads",
     description = "Removes sponsored feed stories, Reels ads, game ads, and banner ads.",
 ) {
-    // Chưa thấy dex feed → ném lỗi → KatanaDexGate thử lại; lần cuối vẫn lỗi thì có toast.
     ::sponsoredPoolAddMethodFingerprint.method
 
     val storyInspector = AdStoryInspector(::adKindEnumFingerprint.clazz)
@@ -129,13 +128,10 @@ val HideFacebookAds = patch(
 
     ::sponsoredStoryVendorMethodsFingerprint.dexMethodList.forEach { dm -> hookNullAdResult(dm.toMethod()) }
 
-    // Story ads: 4 nguồn ad bucket (theo Hushfacebook) trả lại danh sách gốc.
-    // Hook cũ vẫn chặn tải thêm/chèn; hook trả danh sách gốc của nó trùng với nguồn trên nên bỏ khi đã có.
     val storyAdBucketSources = ::storyAdBucketSourcesFingerprint.dexMethodList.map { it.toMethod() }
     storyAdBucketSources.forEach { hookStoryAdBucketPassThrough(it) }
 
     val insertionTrigger = ::storyAdsInsertionTriggerMethodFingerprint.method
-    // Dự phòng có chủ đích: không có method nào thì dùng class fingerprint (cái này mà thiếu thì ném lỗi).
     val providerClasses = ::storyAdsInDiscMethodsFingerprint.dexMethodList
         .map { classLoader.loadClass(it.className) }
         .distinct()
@@ -145,13 +141,12 @@ val HideFacebookAds = patch(
         hookStoryAdProvider(if (storyAdBucketSources.isEmpty()) hooks else hooks.copy(mergeMethod = null))
     }
 
-    // Game ads: chặn ở postMessage của game bridge (theo Hushfacebook).
-    // Không tìm thấy bridge thì dùng các hook xử lý tin nhắn cũ; hai cách không chạy cùng lúc vì hook cũ đổi reject thành success.
     val gameBridge = runCatching {
         Triple(::gameBridgePostMessageFingerprint.method, ::gameBridgeRejectFingerprint.method, ::gameBridgeResolveFingerprint.method)
     }.getOrNull()
     if (gameBridge != null) {
         hookGameAdBridgeMessages(gameBridge.first, gameBridge.second, gameBridge.third)
+        wrapGameBridges(gameBridge.first.declaringClass)
     } else {
         val gameAdMethods = ::gameAdRequestMethodsFingerprint.dexMethodList.map { it.toMethod() }
         gameAdMethods.forEach { m -> hookGameAdRequest(m) }
@@ -177,7 +172,6 @@ val HideFacebookAds = patch(
     ::quicksilverAdsVoltronGateFingerprint.dexMethodList.forEach { dm -> hookForceBoolean(dm.toMethod(), false) }
     ::quicksilverBannerAdLoaderMethodsFingerprint.dexMethodList.forEach { dm -> hookAdRequestNoOp(dm.toMethod()) }
 
-    // Class có thể không tồn tại ở một số bản → dò bằng findClassOrNull, không cần runCatching.
     NEKO_PLAYABLE_ACTIVITY_CLASS.findClassOrNull(classLoader)?.declaredMethods
         ?.firstOrNull { m -> m.name == "onResume" && m.parameterCount == 0 }
         ?.apply { isAccessible = true }
@@ -206,11 +200,7 @@ val HideFacebookAds = patch(
     }
     gameAdUiHooked.values.forEach { method -> hookPlayableAdActivity(method) }
 
-    // hookGlobalGameAdActivityLifecycleFallback()
-
     hookGameAdActivityLaunchFallbacks()
-
-    // hookGlobalGameAdSurfaceFallbacks()
 
     ::profileReelsAsyncAdsQueryFingerprint.hookMethod {
         before { param -> param.result = null }

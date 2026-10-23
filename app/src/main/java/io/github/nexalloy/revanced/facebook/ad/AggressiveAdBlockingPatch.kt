@@ -9,7 +9,6 @@ val AggressiveAdBlocking = patch(
     description = "Broad upstream hooks: ad-break state machine and banner-ad boolean sweep. May break some screens; off by default.",
     use = false,
 ) {
-    // Chưa thấy dex feed → ném lỗi → KatanaDexGate thử lại.
     ::sponsoredPoolAddMethodFingerprint.method
 
     val adBreak = ::adBreakStateMachineMethodsFingerprint.dexMethodList

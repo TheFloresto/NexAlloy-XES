@@ -10,7 +10,6 @@ val HideSearchAds = patch(
     name = "Hide search ads",
     description = "Removes sponsored results from Facebook search, identified by the result's own advertisement type. Organic results are left untouched.",
 ) {
-    // Chưa thấy dex search → ném lỗi → KatanaDexGate thử lại.
     val unitTypeEnum = ::searchResultUnitTypeEnumFingerprint.clazz
 
     val inspector = SearchResultUnitInspector(unitTypeEnum)
