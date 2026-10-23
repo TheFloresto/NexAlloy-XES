@@ -27,13 +27,12 @@ val SkipSplashAds = patch(
     description = "Skips the full-screen splash and TopView ads shown when TikTok opens or returns " +
             "from the background, and stops TikTok downloading them.",
 ) {
-    run { // showDecision
+    run {
         val decisions = ::splashShowDecisionFingerprints.dexMethodList.realMatches()
         check(decisions.isNotEmpty()) { "splash show decision not found" }
         decisions.forEach { it.hookMethod(XC_MethodReplacement.returnConstant(false)) }
     }
 
-    // Tên class viết cứng, bản nào có thì hook → dò bằng findClassOrNull; cần ít nhất 1.
     val splashTasks = SPLASH_TASK_CLASSES.mapNotNull { className ->
         className.findClassOrNull(classLoader)?.declaredMethods
             ?.firstOrNull { it.name == "run" && it.parameterTypes.contentEquals(arrayOf<Class<*>>(Context::class.java)) }
@@ -41,7 +40,7 @@ val SkipSplashAds = patch(
     check(splashTasks.isNotEmpty()) { "none of the ${SPLASH_TASK_CLASSES.size} splash tasks found" }
     splashTasks.forEach { it.hookMethod(XC_MethodReplacement.DO_NOTHING) }
 
-    run { // splashActivity
+    run {
         val activity = NORMAL_SPLASH_ACTIVITY.findClassOrNull(classLoader) ?: error("class not found")
         activity.getDeclaredMethod("onCreate", android.os.Bundle::class.java).hookMethod {
             after { param -> (param.thisObject as? Activity)?.finish() }

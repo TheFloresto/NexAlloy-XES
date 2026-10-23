@@ -15,7 +15,7 @@ val HideShopAds = patch(
     AwemeAdFilter.hideShopCards = true
     dependsOn(TikTokFeedFilterHooks)
 
-    run { // ecCardRequest
+    run {
         val builders = ::ecCardRequestFingerprints.dexMethodList.realMatches()
         check(builders.isNotEmpty()) { "IFeedEcCardService request builder not found" }
         builders.forEach {
@@ -31,7 +31,7 @@ val HideShopAds = patch(
         }
     }
 
-    run { // ecSearchCardTypes
+    run {
         val getters = ::ecSearchCardTypeGetterFingerprints.dexMethodList.realMatches()
         check(getters.isNotEmpty()) { "IEcSearchFeedCardService card type getter not found" }
         getters.forEach {
