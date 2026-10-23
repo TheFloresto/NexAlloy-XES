@@ -150,3 +150,15 @@ private fun <T> firstOf(what: String, vararg strategies: () -> T): T {
     }
     throw Exception("$what: all ${strategies.size} strategies failed: ${errors.joinToString(" | ")}")
 }
+
+internal val upgradeDialogLauncherFingerprint = findMethodDirect {
+    findMethod {
+        matcher {
+            returnType = "void"
+            paramTypes("android.content.Context", null, null)
+            usingEqStrings("upgradeSource", "upgradeTrigger", "Upgrade Type", "Upgrade Trigger")
+        }
+    }.filter { java.lang.reflect.Modifier.isStatic(it.modifiers) }.let {
+        it.singleOrNull() ?: throw Exception("Expected one upgrade dialog launcher, found ${it.size}")
+    }
+}

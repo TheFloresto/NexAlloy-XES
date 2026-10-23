@@ -2,17 +2,19 @@ package io.github.nexalloy.hoodles.morphe.protonvpn.upselling
 
 import de.robv.android.xposed.XC_MethodReplacement
 import io.github.nexalloy.hoodles.morphe.protonvpn.premium.upgradeOnboardingLaunchFingerprint
-import io.github.nexalloy.hookMethod
 import io.github.nexalloy.patch
-import java.lang.reflect.Method
-import java.lang.reflect.Modifier
+
+private const val ONBOARDING = "ONBOARDING"
 
 internal val SkipUpgradeOnboarding = patch {
-    ::upgradeOnboardingLaunchFingerprint.hookMethod(XC_MethodReplacement.DO_NOTHING)
-}
-
-private fun Method.emptyResult(): Any? {
-    if (returnType == Void.TYPE) return null
-    return returnType.declaredFields.firstOrNull { Modifier.isStatic(it.modifiers) && it.type == returnType }
-        ?.apply { isAccessible = true }?.get(null)
+    val launcher = runCatching {
+        ::upgradeDialogLauncherFingerprint.hookMethod {
+            before { param ->
+                val source = param.args[1] as? Enum<*>
+                val trigger = param.args[2] as? Enum<*>
+                if (source?.name == ONBOARDING || trigger?.name == ONBOARDING) param.result = null
+            }
+        }
+    }
+    if (launcher.isFailure) ::upgradeOnboardingLaunchFingerprint.hookMethod(XC_MethodReplacement.DO_NOTHING)
 }

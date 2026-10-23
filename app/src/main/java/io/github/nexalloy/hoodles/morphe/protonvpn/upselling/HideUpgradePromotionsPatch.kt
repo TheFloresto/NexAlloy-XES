@@ -50,7 +50,7 @@ val HideUpgradePromotions = patch(
         }
     }
 
-    run { // VPN Plus badge rows
+    run {
         val plusBadge = getResourceId(ResourceType.DRAWABLE, "vpn_plus_badge")
         ::settingRowWithIconFingerprint.hookMethod {
             before { param ->
@@ -59,7 +59,7 @@ val HideUpgradePromotions = patch(
         }
     }
 
-    run { // restricted setting items
+    run {
         val stateClass = ::settingsValueItemFingerprint.method.parameterTypes.first()
         val restrictedField = stateClass.declaredFields.single { it.type == Boolean::class.javaPrimitiveType }
             .apply { isAccessible = true }
@@ -71,7 +71,7 @@ val HideUpgradePromotions = patch(
         }
     }
 
-    run { // server list upgrade banner
+    run {
         val bannerClass = ::serverGroupBannerClass.clazz
         ::serverGroupsMainScreenStateConstructor.hookMethod {
             before { param ->
@@ -83,7 +83,7 @@ val HideUpgradePromotions = patch(
         }
     }
 
-    run { // upgrade carousel
+    run {
         val stateClass = ::upsellCarouselStateClass.clazz
         ::upgradeCarouselFingerprints.dexMethodList.ifEmpty { error("no producer") }.forEach { producer ->
             producer.hookMethod {
@@ -92,13 +92,13 @@ val HideUpgradePromotions = patch(
         }
     }
 
-    run { // account upgrade banner
+    run {
         ::accountSettingsViewStateConstructor.hookMethod {
             before { param -> param.args[5] = false }
         }
     }
 
-    run { // upgrade onboarding dialog
+    run {
         dependsOn(SkipUpgradeOnboarding)
     }
 }
