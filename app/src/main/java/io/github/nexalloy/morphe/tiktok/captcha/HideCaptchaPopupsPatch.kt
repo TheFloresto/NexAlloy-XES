@@ -22,7 +22,7 @@ val HideCaptchaPopups = patch(
 ) {
     TikTokServices.init(classLoader)
 
-    run { // closeCallbacks
+    run {
         CaptchaSuppressor.init(::secCaptchaCloseCallbacksFingerprint.dexMethodList.map { it.toMethod() })
         check(CaptchaSuppressor.canCloseSecCaptcha()) { "SecCaptcha close callbacks not found" }
     }
@@ -33,7 +33,7 @@ val HideCaptchaPopups = patch(
     }
     fun Method.activityArg() = argIndex("activity") { Activity::class.java.isAssignableFrom(it) }
 
-    if (CaptchaSuppressor.canCloseSecCaptcha()) run { // popCaptchaV2
+    if (CaptchaSuppressor.canCloseSecCaptcha()) run {
         val method = PopCaptchaV2Fingerprint.method
         val activity = method.activityArg()
         val riskInfo = method.argIndex("riskInfo") { it == String::class.java }
@@ -47,7 +47,7 @@ val HideCaptchaPopups = patch(
         }
     }
 
-    if (CaptchaSuppressor.canCloseSecCaptcha()) run { // popCaptcha
+    if (CaptchaSuppressor.canCloseSecCaptcha()) run {
         val method = PopCaptchaFingerprint.method
         val activity = method.activityArg()
         val listener = method.listenerArg()
@@ -60,7 +60,7 @@ val HideCaptchaPopups = patch(
         }
     }
 
-    run { // oecVerification
+    run {
         val method = OecRiskControlExecuteFingerprint.method
         val callback = method.argIndex("callback") { it.name == BD_TURING_CALLBACK }
         val request = method.argIndex("request") { it.name != BD_TURING_CALLBACK }
