@@ -28,7 +28,6 @@ val AllowScreenCapture = patch(
 
     appContext.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
         override fun onActivityResumed(activity: Activity) {
-            // Chạy lúc app hoạt động (không phải lúc apply) → giữ để không làm sập app.
             runCatching { activity.window.clearFlags(secure) }
         }
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}

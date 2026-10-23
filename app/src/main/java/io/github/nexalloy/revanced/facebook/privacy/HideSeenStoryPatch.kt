@@ -10,10 +10,8 @@ val HideSeenStory = patch(
     name = "View stories without marking seen",
     description = "Stops the story viewer from reporting stories as seen, so the owner does not see you in the viewer list.",
 ) {
-    // Chưa thấy dex feed → ném lỗi → KatanaDexGate thử lại.
     ::sponsoredPoolAddMethodFingerprint.method
 
-    // Chuỗi dự phòng có chủ đích: dùng tầng đầu tiên tìm được.
     fun hookAll(list: List<DexMethod>): Int = list.count { dm -> hookBlockNull(dm.toMethod()) }
 
     val sender = hookAll(::storySeenMutationSenderFingerprint.dexMethodList)

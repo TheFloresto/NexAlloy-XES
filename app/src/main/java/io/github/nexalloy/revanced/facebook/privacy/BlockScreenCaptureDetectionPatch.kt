@@ -16,9 +16,8 @@ val BlockScreenCaptureDetection = patch(
         .forEach { m -> m.hookMethod { before { param -> param.result = null } } }
 
     if (Build.VERSION.SDK_INT >= 35) {
-        // Class ẩn, một số ROM có thể không có → dò bằng findClassOrNull.
         "android.view.ScreenRecordingCallbacks".findClassOrNull(null)?.declaredMethods
-            ?.filter { !Modifier.isAbstract(it.modifiers) && (it.name == "addCallback" || it.name == "notifyCallbacks") }
+            ?.filter { !Modifier.isAbstract(it.modifiers) && (it.name == "addCallback" || it.name == "removeCallback" || it.name == "notifyCallbacks") }
             ?.forEach { m ->
                 m.isAccessible = true
                 val result: Any? = if (m.returnType == Int::class.javaPrimitiveType) 0 else null
