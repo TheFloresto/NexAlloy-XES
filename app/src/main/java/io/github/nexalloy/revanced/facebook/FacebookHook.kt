@@ -4,6 +4,7 @@ import io.github.nexalloy.revanced.facebook.ad.AggressiveAdBlocking
 import io.github.nexalloy.revanced.facebook.ad.BlockAdPrefetch
 import io.github.nexalloy.revanced.facebook.ad.BlockAdTelemetry
 import io.github.nexalloy.revanced.facebook.ad.DisableAudienceNetwork
+import io.github.nexalloy.revanced.facebook.ad.HideAffiliateLinks
 import io.github.nexalloy.revanced.facebook.ad.HideFacebookAds
 import io.github.nexalloy.revanced.facebook.ad.HideInstreamAdBreaks
 import io.github.nexalloy.revanced.facebook.ad.HideProfileTimelineAds
@@ -25,6 +26,7 @@ import io.github.nexalloy.revanced.facebook.stories.UploadStoriesInHd
 
 val FacebookPatches = arrayOf(
     HideFacebookAds,
+    HideAffiliateLinks,
     HideInstreamAdBreaks,
     HideProfileTimelineAds,
     HideSearchAds,
