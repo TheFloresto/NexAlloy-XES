@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Strings for the Instagram download patches. -->
 <resources>
     <string name="ig_copy_link_all">Copy all %1$d links</string>
     <string name="ig_copy_link_copied">Media link copied to clipboard</string>
@@ -23,7 +22,7 @@
     <string name="ig_story_download_choice_title">Download story</string>
     <string name="ig_story_download_photo">Download photo</string>
     <string name="ig_story_download_video_music">Download video with music</string>
-    <string name="ig_toast_all_items_saved">All %1$d items saved to NexAlloy folder</string>
+    <string name="ig_toast_all_items_saved">All %1$d items saved to Pictures/Instagram and Movies/Instagram</string>
     <string name="ig_toast_download_failed">Download failed: %1$s</string>
     <string name="ig_toast_downloading">Downloading…</string>
     <string name="ig_toast_downloading_all_n_items">Downloading all %1$d items…</string>
@@ -39,15 +38,15 @@
     <string name="ig_toast_no_media">No media found</string>
     <string name="ig_toast_no_media_for_post">No media found for this post</string>
     <string name="ig_toast_no_reel_url_scroll">No reel URL found — scroll the reel first</string>
-    <string name="ig_toast_photo_saved">Photo saved to NexAlloy folder</string>
+    <string name="ig_toast_photo_saved">Photo saved to Pictures/Instagram</string>
     <string name="ig_toast_post_url_not_found">Post URL not found</string>
     <string name="ig_toast_profile_pic_saved">Profile picture saved!</string>
     <string name="ig_toast_profile_pic_url_not_found">Could not get profile picture URL</string>
     <string name="ig_toast_reel_failed">Reel download failed: %1$s</string>
-    <string name="ig_toast_reel_saved">Reel saved to NexAlloy folder</string>
+    <string name="ig_toast_reel_saved">Reel saved to Movies/Instagram</string>
     <string name="ig_toast_reel_url_not_found">Reel URL not found</string>
-    <string name="ig_toast_saved">Saved to NexAlloy folder</string>
-    <string name="ig_toast_story_saved">Story saved to NexAlloy folder</string>
+    <string name="ig_toast_saved">Saved to the Instagram folder</string>
+    <string name="ig_toast_story_saved">Story saved to the Instagram folder</string>
     <string name="ig_toast_story_url_not_found">Story URL not found</string>
-    <string name="ig_toast_video_saved">Video saved to NexAlloy folder</string>
+    <string name="ig_toast_video_saved">Video saved to Movies/Instagram</string>
 </resources>
