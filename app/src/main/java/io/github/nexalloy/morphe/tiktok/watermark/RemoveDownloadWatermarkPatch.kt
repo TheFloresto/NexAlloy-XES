@@ -18,24 +18,24 @@ val RemoveDownloadWatermark = patch(
 ) {
     val transcode: Method = ACL_COMMON_SHARE_CLASS.findClassOrNull(classLoader)
         ?.declaredMethods?.firstOrNull { it.name == TRANSCODE_GETTER && it.parameterCount == 0 }
-        ?: AclCommonShareTranscodeFingerprint.method // dự phòng khi tên bị đổi
+        ?: AclCommonShareTranscodeFingerprint.method
 
     check(transcode.returnType == Int::class.javaPrimitiveType) {
         "$TRANSCODE_GETTER returns ${transcode.returnType.simpleName}, not int"
     }
     transcode.hookMethod(XC_MethodReplacement.returnConstant(TRANSCODE_NO_WATERMARK))
 
-    run { // clean address fallback
+    run {
         val cleanAddr = VIDEO_CLASS.findClassOrNull(classLoader)
             ?.declaredMethods?.firstOrNull { it.name == CLEAN_ADDR_GETTER && it.parameterCount == 0 }
             ?: error("$VIDEO_CLASS.$CLEAN_ADDR_GETTER not found")
         CleanDownloadAddress.install(cleanAddr)
     }
 
-    run { // deoptimize readers
+    run {
         val readers = (::transcodeReaderFingerprints.dexMethodList + ::cleanAddrReaderFingerprints.dexMethodList)
-            .filterNot { it.isStaticInitializer } // not reachable via reflection
-            .map { it.toMember() } // readers may be constructors, e.g. X.<init>(Context, …, Aweme, …)
+            .filterNot { it.isStaticInitializer }
+            .map { it.toMember() }
             .distinct()
         check(readers.isNotEmpty()) { "no reader of $TRANSCODE_GETTER or $CLEAN_ADDR_GETTER found" }
 
